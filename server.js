@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { Configuration, OpenAIApi } = require('openai');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('./swagger');
 
 const app = express();
 const port = 3001;
@@ -40,6 +42,13 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
+// Swagger UI - moved before other routes
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AI Chat API Documentation"
+}));
+
 // Configuration storage
 let config = {
   apiKey: '',
@@ -49,7 +58,20 @@ let config = {
   topP: 1,
 };
 
-// Health check endpoint
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Check server health and configuration status
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheck'
+ */
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -57,17 +79,69 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Configuration endpoints
+/**
+ * @swagger
+ * /api/config:
+ *   get:
+ *     summary: Get current Azure OpenAI configuration
+ *     tags: [Configuration]
+ *     responses:
+ *       200:
+ *         description: Current configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Config'
+ */
 app.get('/api/config', (req, res) => {
   res.json(config);
 });
 
+/**
+ * @swagger
+ * /api/config:
+ *   post:
+ *     summary: Update Azure OpenAI configuration
+ *     tags: [Configuration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Config'
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ */
 app.post('/api/config', (req, res) => {
   config = { ...config, ...req.body };
   res.json({ success: true });
 });
 
-// Chat endpoint
+/**
+ * @swagger
+ * /api/chat:
+ *   post:
+ *     summary: Send a message to Azure OpenAI
+ *     tags: [Chat]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/ChatMessage'
+ *     responses:
+ *       200:
+ *         description: AI response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ChatResponse'
+ *       400:
+ *         description: Azure OpenAI is not configured
+ *       500:
+ *         description: Server error
+ */
 app.post('/api/chat', upload.single('image'), async (req, res) => {
   try {
     if (!config.apiKey || !config.endpoint || !config.deploymentName) {
@@ -133,4 +207,5 @@ setInterval(() => {
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+  console.log(`API documentation available at http://localhost:${port}/api-docs`);
 }); 
