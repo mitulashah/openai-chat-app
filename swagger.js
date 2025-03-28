@@ -28,6 +28,11 @@ const options = {
               format: 'binary',
               description: 'Optional image file to be attached with the message',
             },
+            voice: {
+              type: 'string',
+              format: 'binary',
+              description: 'Optional voice recording file to be attached with the message',
+            },
           },
         },
         ChatResponse: {
@@ -109,4 +114,4 @@ const options = {
 
 const specs = swaggerJsdoc(options);
 
-module.exports = specs; 
+module.exports = specs;

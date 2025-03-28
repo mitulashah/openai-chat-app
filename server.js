@@ -10,7 +10,7 @@ const specs = require('./swagger');
 const app = express();
 const port = 3001;
 
-// Configure multer for image uploads
+// Configure multer for file uploads (both image and voice)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads';
@@ -27,11 +27,12 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: function (req, file, cb) {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed!'), false);
+    // Accept image and audio files
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('audio/')) {
+      return cb(new Error('Only image and audio files are allowed!'), false);
     }
     cb(null, true);
   }
@@ -142,7 +143,10 @@ app.post('/api/config', (req, res) => {
  *       500:
  *         description: Server error
  */
-app.post('/api/chat', upload.single('image'), async (req, res) => {
+app.post('/api/chat', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'voice', maxCount: 1 }
+]), async (req, res) => {
   try {
     if (!config.apiKey || !config.endpoint || !config.deploymentName) {
       return res.status(400).json({ error: 'Azure OpenAI is not configured' });
@@ -155,13 +159,23 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
       })
     );
 
-    let messages = [{ role: 'user', content: req.body.message || '' }];
-
+    let userMessage = req.body.message || '';
+    
     // If an image was uploaded, add it to the message
-    if (req.file) {
-      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      messages[0].content += `\n[Image: ${imageUrl}]`;
+    if (req.files && req.files.image && req.files.image.length > 0) {
+      const imageFile = req.files.image[0];
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${imageFile.filename}`;
+      userMessage += `\n[Image: ${imageUrl}]`;
     }
+    
+    // If a voice recording was uploaded, add it to the message
+    if (req.files && req.files.voice && req.files.voice.length > 0) {
+      const voiceFile = req.files.voice[0];
+      const voiceUrl = `${req.protocol}://${req.get('host')}/uploads/${voiceFile.filename}`;
+      userMessage += `\n[Voice Recording: ${voiceUrl}]`;
+    }
+    
+    const messages = [{ role: 'user', content: userMessage }];
 
     const completion = await openai.createChatCompletion({
       model: config.deploymentName,
@@ -208,4 +222,4 @@ setInterval(() => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
   console.log(`API documentation available at http://localhost:${port}/api-docs`);
-}); 
+});
