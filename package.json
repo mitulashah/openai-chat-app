@@ -1,0 +1,22 @@
+{
+  "name": "ai-chat-app",
+  "version": "1.0.0",
+  "description": "AI Chat Application using Fluent 2 and Node.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "nodemon server/index.js",
+    "client:dev": "cd client && npm run dev",
+    "install:all": "npm install && cd client && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "openai": "^4.24.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "concurrently": "^8.2.2"
+  }
+} 
