@@ -36,22 +36,22 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     flexGrow: 1,
     overflow: 'hidden',
-    padding: '20px',
-    ...shorthands.gap('10px'),
+    padding: '12px', // Reduced from 20px
+    ...shorthands.gap('6px'), // Reduced from 10px
   },
   messageContainer: {
     display: 'flex',
     flexDirection: 'column',
     maxWidth: '80%',
-    padding: '10px',
+    padding: '6px 8px', // Reduced from 10px
     borderRadius: '8px',
-    ...shorthands.gap('5px'),
+    ...shorthands.gap('3px'), // Reduced from 5px
     position: 'relative',
   },
   messageContent: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('8px'),
+    ...shorthands.gap('4px'), // Reduced from 8px
   },
   messageImage: {
     maxWidth: '100%',
@@ -132,14 +132,14 @@ const useStyles = makeStyles({
     },
     '& pre': {
       backgroundColor: tokens.colorNeutralBackground4,
-      padding: '8px',
+      padding: '6px', // Reduced from 8px
       borderRadius: '4px',
       overflowX: 'auto',
     },
     '& code': {
       backgroundColor: tokens.colorNeutralBackground4,
-      padding: '2px 4px',
-      borderRadius: '4px',
+      padding: '1px 3px', // Reduced from 2px 4px
+      borderRadius: '3px',
       fontFamily: 'monospace',
     },
     '& a': {
@@ -155,29 +155,29 @@ const useStyles = makeStyles({
     '& table': {
       borderCollapse: 'collapse',
       width: '100%',
-      margin: '10px 0',
+      margin: '6px 0', // Reduced from 10px
     },
     '& th, & td': {
       border: `1px solid ${tokens.colorNeutralStroke1}`,
-      padding: '8px',
+      padding: '6px', // Reduced from 8px
       textAlign: 'left',
     },
     '& blockquote': {
       borderLeft: `4px solid ${tokens.colorBrandStroke1}`,
       margin: '0',
-      paddingLeft: '10px',
+      paddingLeft: '8px', // Reduced from 10px
       color: tokens.colorNeutralForeground2,
     },
     // Add proper styling for lists
     '& ul, & ol': {
-      paddingLeft: '20px',  // Reduce default padding
-      marginTop: '4px',
-      marginBottom: '4px',
+      paddingLeft: '16px',  // Reduced from 20px
+      marginTop: '2px', // Reduced from 4px
+      marginBottom: '2px', // Reduced from 4px
       boxSizing: 'border-box',
       width: '100%',
     },
     '& li': {
-      marginBottom: '4px',
+      marginBottom: '2px', // Reduced from 4px
       // Ensure text wraps properly
       overflowWrap: 'break-word',
       wordWrap: 'break-word',
@@ -190,7 +190,7 @@ const useStyles = makeStyles({
   },
   timestampTooltip: {
     position: 'absolute',
-    bottom: '-25px',
+    bottom: '-24px', // Moved further down to fully clear the bubble
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
     opacity: 0,
@@ -203,17 +203,36 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     boxShadow: `0 2px 4px rgba(0, 0, 0, 0.1)`,
   },
-  timestampTooltipUser: {
-    right: '5px',
+  // Repositioned sender labels to appear on the sides instead of above
+  senderLabel: {
+    position: 'absolute',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: tokens.colorNeutralForeground3,
+    opacity: 0,
+    transition: 'opacity 0.2s ease',
+    pointerEvents: 'none',
+    backgroundColor: tokens.colorNeutralBackground1,
+    padding: '2px 6px',
+    borderRadius: '4px',
+    zIndex: 10,
+    whiteSpace: 'nowrap',
+    boxShadow: `0 2px 4px rgba(0, 0, 0, 0.1)`,
+    top: '50%', // Center vertically
+    transform: 'translateY(-50%)', // Center vertically
   },
-  timestampTooltipAi: {
-    left: '5px',
+  senderLabelUser: {
+    left: '-40px', // Position to the left of user messages
+  },
+  senderLabelAi: {
+    right: '-30px', // Position to the right of AI messages
   },
   messageContainerWithHover: {
-    '&:hover .timestampTooltip': {
+    '&:hover .timestampTooltip, &:hover .senderLabel': {
       opacity: 1,
     },
-    marginBottom: '15px', // Add space between messages to accommodate the tooltip
+    marginBottom: '8px', // Reduced from 12px
+    marginTop: '4px', // Reduced from 5px
   },
   // New styles for left-positioned error display
   messageWithErrorContainer: {
@@ -354,9 +373,100 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
   const messagesEndRef = useRef(null);
   const listRef = useRef(null);
   const sizeCache = useRef({});
-  const { handleRetry } = useChat();
+  const { handleRetry, setError } = useChat();
   const [retryingIds, setRetryingIds] = useState(new Set());
-  const [isScrolling, setIsScrolling] = useState(false);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const lastMessageCountRef = useRef(0);
+  // Track whether we're waiting for an AI response
+  const [isWaitingForAIResponse, setIsWaitingForAIResponse] = useState(false);
+  const userInteractedRef = useRef(false);
+
+  // More intelligent auto-scroll mechanism to prevent flashing
+  const scrollToBottom = useCallback((options = {}) => {
+    const { force = false, smooth = true } = options;
+    
+    // Don't scroll if user has manually scrolled up, unless forced
+    if (!autoScrollEnabled && !force) return;
+    
+    // If user has interacted during an AI response, don't auto-scroll
+    if (userInteractedRef.current && isWaitingForAIResponse && !force) return;
+    
+    // Use smooth scrolling for better visual experience
+    const behavior = smooth ? 'smooth' : 'auto';
+    
+    // Primary approach - scroll to our end marker
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+    }
+
+    // Backup approach with the virtualized list
+    if (listRef.current) {
+      try {
+        // Scroll to the last item immediately with correct alignment
+        listRef.current.scrollToItem(messages.length - 1, 'end');
+        
+        // Ensure we're fully scrolled to the bottom
+        if (listRef.current._outerRef) {
+          const listElement = listRef.current._outerRef;
+          listElement.scrollTop = listElement.scrollHeight;
+        }
+      } catch (err) {
+        console.log('Error scrolling list, using fallback');
+      }
+    }
+  }, [messages.length, autoScrollEnabled, isWaitingForAIResponse]);
+
+  // Effect to handle scrolling when new messages arrive
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current) {
+      // New messages have arrived
+      lastMessageCountRef.current = messages.length;
+      
+      // Reset size cache when messages change
+      sizeCache.current = {};
+      
+      // Delay scrolling slightly to ensure render is complete
+      setTimeout(scrollToBottom, 100);
+      
+      // Try again after a longer delay as a fallback
+      setTimeout(scrollToBottom, 300);
+    }
+  }, [messages.length, scrollToBottom]);
+  
+  // Additional fallback for dynamic content that might change height
+  useEffect(() => {
+    // Set a few timeouts at different intervals for better reliability
+    const timeouts = [
+      setTimeout(scrollToBottom, 500),
+      setTimeout(scrollToBottom, 1000),
+      setTimeout(scrollToBottom, 2000)
+    ];
+    
+    return () => {
+      // Clean up all timeouts
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [messages.length, scrollToBottom]);
+
+  // Auto-disable scroll on user scroll-up
+  useEffect(() => {
+    if (!listRef.current || !listRef.current._outerRef) return;
+    
+    const handleScroll = () => {
+      const list = listRef.current._outerRef;
+      const isAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 100;
+      setAutoScrollEnabled(isAtBottom);
+    };
+    
+    const listElement = listRef.current._outerRef;
+    listElement.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      if (listElement) {
+        listElement.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
 
   // Calculate and cache message heights for virtualized list
   const getMessageHeight = useCallback((index) => {
@@ -366,37 +476,34 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     }
 
     const message = messages[index];
-    if (!message) return 100; // Default height
+    if (!message) return 80; // Reduced default height from 100
 
-    // Estimate height based on content
-    const baseHeight = 80;
+    // More accurate height calculation
+    const baseHeight = 60; 
     const textLength = message.text?.length || 0;
+    // More accurate text height calculation based on character count
+    const textHeight = Math.max(18, Math.min(Math.ceil(textLength / 50) * 18, 300));
     const hasImage = message.image ? 300 : 0;
     const hasVoice = message.voice ? 100 : 0;
-    const hasError = message.hasError ? 40 : 0;
+    const hasError = message.hasError ? 60 : 0;
     
-    // Estimate text height (about 20px per 100 chars)
-    const textHeight = Math.max(20, Math.ceil(textLength / 50) * 20);
+    // Fixed margins for consistent spacing - critical for preventing large gaps
+    const padding = 20; // Reduced to prevent extra space
+    
+    // Handle scrolling boundary cases by examining adjacent messages
+    const isPreviousAI = index > 0 && messages[index - 1]?.sender === 'ai';
+    const isUser = message.sender === 'user';
+    
+    // Add padding adjustment for when a user message follows an AI message
+    const boundaryAdjustment = (isUser && isPreviousAI) ? -10 : 0;
     
     // Calculate total height and cache it
-    const totalHeight = baseHeight + textHeight + hasImage + hasVoice + hasError;
+    const totalHeight = baseHeight + textHeight + hasImage + hasVoice + hasError + padding + boundaryAdjustment;
     sizeCache.current[index] = totalHeight;
     
     return totalHeight;
   }, [messages]);
 
-  // Reset size cache when messages change
-  useEffect(() => {
-    sizeCache.current = {};
-  }, [messages.length]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (listRef.current && messages.length > 0) {
-      listRef.current.scrollToItem(messages.length - 1);
-    }
-  }, [messages.length]);
-  
   // Helper function for retry with better state management
   const onRetryMessage = (e, failedMessageId, originalInput, originalImage, originalVoice) => {
     // Prevent default browser behavior that might cause page refresh
@@ -510,13 +617,24 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     const message = messages[index];
     const isError = message.hasError && !retryingIds.has(message.id);
     const isUser = message.sender === 'user';
+    const isLastMessage = index === messages.length - 1;
+    
+    // Apply consistent spacing - modify style to ensure consistent gaps
+    const modifiedStyle = {
+      ...style,
+      // Add extra padding to the bottom of the last message to ensure it's not cut off
+      paddingBottom: isLastMessage ? '20px' : '0',
+      // Apply fixed margin for consistent spacing regardless of message position
+      marginTop: '4px',
+      marginBottom: '6px',
+    };
 
     // For messages with errors, use a different container structure
     if (isError) {
       return (
         <div 
           style={{
-            ...style,
+            ...modifiedStyle,
             display: 'flex',
             justifyContent: isUser ? 'flex-end' : 'flex-start',
           }}
@@ -593,11 +711,11 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     return (
       <div
         style={{
-          ...style,
+          ...modifiedStyle,
           display: 'flex',
           justifyContent: isUser ? 'flex-end' : 'flex-start',
-          paddingRight: isUser ? '20px' : '0',
-          paddingLeft: isUser ? '0' : '20px'
+          paddingRight: isUser ? '10px' : '0', // Reduced from 20px
+          paddingLeft: isUser ? '0' : '10px' // Reduced from 20px
         }}
       >
         <div
@@ -607,6 +725,14 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
             ${styles.messageContainerWithHover}
           `}
         >
+          {/* Add sender label that appears on hover */}
+          <div className={`
+            ${styles.senderLabel} 
+            ${isUser ? styles.senderLabelUser : styles.senderLabelAi}
+            senderLabel
+          `}>
+            {isUser ? 'YOU' : 'AI'}
+          </div>
           {message.isLoading ? (
             <div className={styles.messageContent}>
               <Spinner size="tiny" label="AI is thinking..." />
@@ -701,6 +827,77 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     </div>
   );
 
+  // Make scrolling more reliable by increasing scroll buffer
+  useEffect(() => {
+    if (messages.length > 0) {
+      // For the last few messages, ensure they're always in view
+      const scrollWithBuffer = () => {
+        if (listRef.current) {
+          // Ensure the list goes fully to the bottom with extra padding
+          if (listRef.current._outerRef) {
+            const listElement = listRef.current._outerRef;
+            listElement.scrollTop = listElement.scrollHeight + 100; // Add extra buffer
+          }
+          
+          // Always ensure last message is visible
+          try {
+            listRef.current.scrollToItem(messages.length - 1, 'end');
+          } catch (err) {
+            console.log('Error in scrollToItem, using fallback');
+          }
+          
+          // Scroll to our positioned end marker
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ block: 'end' });
+          }
+        }
+      };
+      
+      // Apply multiple scrolls with different timings for reliability
+      scrollWithBuffer();
+      setTimeout(scrollWithBuffer, 100);
+      setTimeout(scrollWithBuffer, 300);
+      setTimeout(scrollWithBuffer, 500);
+    }
+  }, [messages.length]);
+
+  // Detect AI message loading state and user interactions
+  useEffect(() => {
+    // Check if the last message is from the AI and is in loading state
+    const lastMessage = messages[messages.length - 1];
+    const isAILoading = lastMessage && lastMessage.sender === 'ai' && lastMessage.isLoading;
+    
+    // Update the waiting state
+    setIsWaitingForAIResponse(isAILoading);
+    
+    // When AI is done responding, reset user interaction flag and force scroll to bottom
+    if (!isAILoading && isWaitingForAIResponse) {
+      userInteractedRef.current = false;
+      // Add small delay to ensure content is rendered
+      setTimeout(() => {
+        scrollToBottom({ force: true, smooth: true });
+      }, 100);
+    }
+  }, [messages, scrollToBottom, isWaitingForAIResponse]);
+
+  // Detect user interactions while waiting for AI
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (isWaitingForAIResponse) {
+        userInteractedRef.current = true;
+      }
+    };
+    
+    // Track mouse and keyboard events to detect user interaction
+    window.addEventListener('mousedown', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+    
+    return () => {
+      window.removeEventListener('mousedown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [isWaitingForAIResponse]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatContainer}>
@@ -709,28 +906,44 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
         ) : messages.length === 0 ? (
           <EmptyMessage />
         ) : (
-          <AutoSizer>
-            {({ height, width }) => (
-              <List
-                ref={listRef}
-                height={height}
-                width={width}
-                itemCount={messages.length}
-                itemSize={getMessageHeight}
-                overscanCount={5}
-                onScroll={() => setIsScrolling(true)}
-                onScrollEnd={() => setIsScrolling(false)}
-              >
-                {MessageRow}
-              </List>
-            )}
-          </AutoSizer>
+          <>
+            <AutoSizer>
+              {({ height, width }) => (
+                <List
+                  ref={listRef}
+                  height={height}
+                  width={width}
+                  itemCount={messages.length}
+                  itemSize={getMessageHeight}
+                  overscanCount={20}
+                  initialScrollOffset={999999}
+                  itemData={messages}
+                  style={{ 
+                    paddingBottom: "70px", // Increased padding for better bottom visibility
+                    boxSizing: "border-box"
+                  }}
+                  useIsScrolling={false}
+                  direction="vertical"
+                >
+                  {MessageRow}
+                </List>
+              )}
+            </AutoSizer>
+            
+            {/* This blank div is always placed at the end for smooth scrolling */}
+            <div 
+              ref={messagesEndRef} 
+              style={{ 
+                height: 1, 
+                width: '100%', 
+                clear: 'both',
+                float: 'left' 
+              }} 
+            />
+          </>
         )}
         
         {error && <ErrorDisplay message={error} type="error" onDismiss={() => setError('')} />}
-        
-        {/* Add a blank div for scrolling to the bottom */}
-        <div ref={messagesEndRef} />
       </div>
       
       {/* Add the action bar with clear chat button */}

@@ -4,15 +4,9 @@ import {
   shorthands,
   tokens,
   Button,
-  Divider,
   Tooltip
 } from '@fluentui/react-components';
-import { 
-  DeleteRegular, 
-  SaveRegular, 
-  BookmarkRegular,
-  CopyRegular
-} from '@fluentui/react-icons';
+import { DeleteRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   actionBar: {
@@ -20,13 +14,10 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'flex-end',
     padding: '8px 20px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground3,
+    // Removed the border-top property
+    backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.gap('12px'),
     flexShrink: 0,
-  },
-  divider: {
-    height: '20px',
   }
 });
 
@@ -42,6 +33,7 @@ export const ChatActionBar = ({ onClearChat, isConfigured = true }) => {
 
   return (
     <div className={styles.actionBar}>
+      {/* Only the clear chat button is kept and positioned on the right side */}
       <Tooltip
         content="Clear all messages"
         relationship="label"
@@ -54,51 +46,6 @@ export const ChatActionBar = ({ onClearChat, isConfigured = true }) => {
           disabled={!isConfigured}
         >
           Clear Chat
-        </Button>
-      </Tooltip>
-      
-      <Divider vertical className={styles.divider} />
-      
-      {/* Placeholder for future features */}
-      <Tooltip
-        content="Save conversation (Coming soon)"
-        relationship="label"
-        positioning="above"
-      >
-        <Button 
-          icon={<SaveRegular />}
-          appearance="subtle"
-          disabled={true}
-        >
-          Save
-        </Button>
-      </Tooltip>
-      
-      <Tooltip
-        content="Copy chat to clipboard (Coming soon)"
-        relationship="label"
-        positioning="above"
-      >
-        <Button 
-          icon={<CopyRegular />}
-          appearance="subtle"
-          disabled={true}
-        >
-          Copy
-        </Button>
-      </Tooltip>
-      
-      <Tooltip
-        content="Bookmark this conversation (Coming soon)"
-        relationship="label"
-        positioning="above"
-      >
-        <Button 
-          icon={<BookmarkRegular />}
-          appearance="subtle"
-          disabled={true}
-        >
-          Bookmark
         </Button>
       </Tooltip>
     </div>
