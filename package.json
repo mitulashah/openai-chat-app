@@ -17,6 +17,7 @@
     "openai": "^4.24.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "tiktoken": "^1.0.20",
     "vite": "^6.2.3"
   },
   "devDependencies": {

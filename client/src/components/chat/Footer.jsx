@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   makeStyles,
@@ -15,9 +15,8 @@ import {
   Badge,
   Tooltip,
 } from '@fluentui/react-components';
-import { DeleteRegular, DataUsageRegular, InfoRegular } from '@fluentui/react-icons';
+import { DeleteRegular, DataUsageRegular, ColorRegular } from '@fluentui/react-icons';
 import { themes } from '../../theme';
-import { useChat } from '../../contexts/ChatContext';
 
 const useStyles = makeStyles({
   footer: {
@@ -42,6 +41,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     ...shorthands.gap('8px'),
+    position: 'relative',
   },
   themePreview: {
     width: '16px',
@@ -107,24 +107,80 @@ const useStyles = makeStyles({
   },
   tooltipDivider: {
     margin: '6px 0',
+  },
+  // New theme transition indicator styles
+  themeTransitionIndicator: {
+    position: 'absolute',
+    top: '-5px',
+    right: '-5px',
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: tokens.colorBrandBackground,
+    opacity: 0,
+    transition: 'opacity 300ms ease, transform 300ms ease',
+    transform: 'scale(0)',
+  },
+  themeTransitioning: {
+    opacity: 1,
+    transform: 'scale(1)',
+    animation: {
+      '0%': {
+        transform: 'scale(0.8)',
+      },
+      '50%': {
+        transform: 'scale(1.2)',
+      },
+      '100%': {
+        transform: 'scale(0.8)',
+      }
+    },
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+  },
+  menuButton: {
+    position: 'relative',
   }
 });
 
+/**
+ * Footer component displays application status and controls
+ * 
+ * This component explicitly uses props only for all data to avoid inconsistent state management.
+ * It doesn't access ChatContext directly to improve architectural consistency.
+ * 
+ * @param {Object} props - Component props
+ * @param {boolean} props.isConfigured - Whether Azure OpenAI is configured
+ * @param {Object} props.currentTheme - Current theme object
+ * @param {string} props.currentThemeName - Current theme name
+ * @param {Function} props.handleThemeChange - Function to change theme
+ * @param {Object} props.memorySettings - Memory settings object
+ * @param {Object} props.tokenUsage - Token usage statistics
+ * @param {boolean} [props.isTransitioning] - Whether the theme is transitioning
+ * @returns {JSX.Element}
+ */
 export const Footer = ({ 
   isConfigured, 
   currentTheme, 
   currentThemeName, 
   handleThemeChange,
-  onClearChat,
-  // Added props for memory management and token usage
-  memorySettings: memorySettingsProps,
-  tokenUsage: tokenUsageProps
+  memorySettings,
+  tokenUsage,
+  isTransitioning
 }) => {
   const styles = useStyles();
-  // Get from context or props (props take precedence)
-  const contextValues = useChat();
-  const memorySettings = memorySettingsProps || contextValues.memorySettings;
-  const tokenUsage = tokenUsageProps || contextValues.tokenUsage;
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  // Effect to show tooltip briefly when theme is changing
+  useEffect(() => {
+    if (isTransitioning) {
+      setShowTooltip(true);
+      const timer = setTimeout(() => {
+        setShowTooltip(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isTransitioning]);
   
   // Get background colors for both themes
   const lightBackground = themes?.light?.colorNeutralBackground1 || '#F8F8F2';
@@ -145,6 +201,8 @@ export const Footer = ({
 
   // Function to get memory mode display name
   const getMemoryModeDisplay = () => {
+    if (!memorySettings) return 'Limited Memory';
+    
     switch(memorySettings.memoryMode) {
       case 'none': return 'No Memory';
       case 'limited': return `Limited (${memorySettings.memoryLimit} messages)`;
@@ -156,6 +214,12 @@ export const Footer = ({
   // Format large numbers with commas
   const formatNumber = (num) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Ensure we have valid tokenUsage data
+  const safeTokenUsage = tokenUsage || { 
+    total: 0, 
+    current: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } 
   };
 
   return (
@@ -184,22 +248,30 @@ export const Footer = ({
                   
                   <div className={styles.tokenStatsRow}>
                     <Text className={styles.tokenStatsLabel}>Current Prompt Tokens:</Text>
-                    <Text className={styles.tokenStatsValue}>{formatNumber(tokenUsage.current.promptTokens || 0)}</Text>
+                    <Text className={styles.tokenStatsValue}>
+                      {formatNumber(safeTokenUsage.current.promptTokens || 0)}
+                    </Text>
                   </div>
                   <div className={styles.tokenStatsRow}>
                     <Text className={styles.tokenStatsLabel}>Current Completion Tokens:</Text>
-                    <Text className={styles.tokenStatsValue}>{formatNumber(tokenUsage.current.completionTokens || 0)}</Text>
+                    <Text className={styles.tokenStatsValue}>
+                      {formatNumber(safeTokenUsage.current.completionTokens || 0)}
+                    </Text>
                   </div>
                   <div className={styles.tokenStatsRow}>
                     <Text className={styles.tokenStatsLabel}>Current Total:</Text>
-                    <Text className={styles.tokenStatsValue}>{formatNumber(tokenUsage.current.totalTokens || 0)}</Text>
+                    <Text className={styles.tokenStatsValue}>
+                      {formatNumber(safeTokenUsage.current.totalTokens || 0)}
+                    </Text>
                   </div>
                   
                   <Divider className={styles.tooltipDivider} />
                   
                   <div className={styles.tokenStatsRow}>
                     <Text className={styles.tokenStatsLabel}>Session Total Tokens:</Text>
-                    <Text className={styles.tokenStatsValue}>{formatNumber(tokenUsage.total || 0)}</Text>
+                    <Text className={styles.tokenStatsValue}>
+                      {formatNumber(safeTokenUsage.total || 0)}
+                    </Text>
                   </div>
                 </div>
               }
@@ -209,7 +281,7 @@ export const Footer = ({
               <div className={styles.tokenUsageContainer}>
                 <DataUsageRegular />
                 <Badge appearance="filled" className={styles.tokenBadge}>
-                  {formatNumber(tokenUsage.current.totalTokens || 0)}
+                  {formatNumber(safeTokenUsage.current.totalTokens || 0)}
                 </Badge>
                 <Text className={styles.memoryModeText}>
                   {getMemoryModeDisplay()}
@@ -222,70 +294,74 @@ export const Footer = ({
       <div className={styles.footerRight}>
         <div className={styles.themeSelector}>
           <Text size={200}>Theme:</Text>
-          <Menu>
-            <MenuTrigger>
-              <MenuButton>
-                {getThemeDisplayName()}
-              </MenuButton>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem 
-                  onClick={(e) => handleThemeChange(e, { value: 'light' })}
-                >
-                  <div className={styles.menuItemContent}>
-                    <div 
-                      className={styles.themePreview}
-                      style={{ backgroundColor: lightBackground }}
-                    />
-                    Light Dracula
-                  </div>
-                </MenuItem>
-                <MenuItem 
-                  onClick={(e) => handleThemeChange(e, { value: 'dark' })}
-                >
-                  <div className={styles.menuItemContent}>
-                    <div 
-                      className={styles.themePreview}
-                      style={{ backgroundColor: darkBackground }}
-                    />
-                    Dark Dracula
-                  </div>
-                </MenuItem>
-                <MenuItem 
-                  onClick={(e) => handleThemeChange(e, { value: 'lightNord' })}
-                >
-                  <div className={styles.menuItemContent}>
-                    <div 
-                      className={styles.themePreview}
-                      style={{ backgroundColor: lightNordBackground }}
-                    />
-                    Light Nord
-                  </div>
-                </MenuItem>
-                <MenuItem 
-                  onClick={(e) => handleThemeChange(e, { value: 'darkNord' })}
-                >
-                  <div className={styles.menuItemContent}>
-                    <div 
-                      className={styles.themePreview}
-                      style={{ backgroundColor: darkNordBackground }}
-                    />
-                    Dark Nord
-                  </div>
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
+          <Tooltip
+            content="Theme is changing..."
+            relationship="label"
+            positioning="above"
+            visible={showTooltip}
+          >
+            <div className={styles.menuButton}>
+              <Menu>
+                <MenuTrigger>
+                  <MenuButton icon={<ColorRegular />}>
+                    {getThemeDisplayName()}
+                  </MenuButton>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem 
+                      onClick={(e) => handleThemeChange(e, { value: 'light' })}
+                    >
+                      <div className={styles.menuItemContent}>
+                        <div 
+                          className={styles.themePreview}
+                          style={{ backgroundColor: lightBackground }}
+                        />
+                        Light Dracula
+                      </div>
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={(e) => handleThemeChange(e, { value: 'dark' })}
+                    >
+                      <div className={styles.menuItemContent}>
+                        <div 
+                          className={styles.themePreview}
+                          style={{ backgroundColor: darkBackground }}
+                        />
+                        Dark Dracula
+                      </div>
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={(e) => handleThemeChange(e, { value: 'lightNord' })}
+                    >
+                      <div className={styles.menuItemContent}>
+                        <div 
+                          className={styles.themePreview}
+                          style={{ backgroundColor: lightNordBackground }}
+                        />
+                        Light Nord
+                      </div>
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={(e) => handleThemeChange(e, { value: 'darkNord' })}
+                    >
+                      <div className={styles.menuItemContent}>
+                        <div 
+                          className={styles.themePreview}
+                          style={{ backgroundColor: darkNordBackground }}
+                        />
+                        Dark Nord
+                      </div>
+                    </MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+              <div 
+                className={`${styles.themeTransitionIndicator} ${isTransitioning ? styles.themeTransitioning : ''}`}
+              />
+            </div>
+          </Tooltip>
         </div>
-        <Divider vertical className={styles.divider} />
-        <Button 
-          icon={<DeleteRegular />}
-          appearance="subtle"
-          onClick={onClearChat}
-        >
-          Clear Chat
-        </Button>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getServerConfig, updateConfig } from '../services/chatService';
-
-const STORAGE_KEY = 'azure-openai-config';
+import { loadConfig, saveConfig } from '../services/storageService';
 
 /**
  * Hook for managing Azure OpenAI configuration
@@ -70,13 +69,12 @@ export const useAzureOpenAIConfig = (options = {}) => {
     try {
       setIsLoading(true);
       
-      // First, try to load from localStorage
-      const savedConfig = localStorage.getItem(STORAGE_KEY);
-      if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig);
+      // First, try to load from localStorage using storageService
+      const localConfig = loadConfig();
+      if (localConfig) {
         setConfig(prevConfig => ({
           ...prevConfig,
-          ...parsedConfig
+          ...localConfig
         }));
         console.log('Loaded configuration from localStorage');
       }
@@ -122,7 +120,7 @@ export const useAzureOpenAIConfig = (options = {}) => {
   /**
    * Saves the current configuration to both localStorage and server
    */
-  const saveConfig = async () => {
+  const saveConfigHandler = async () => {
     try {
       setIsLoading(true);
       
@@ -134,8 +132,8 @@ export const useAzureOpenAIConfig = (options = {}) => {
         return;
       }
 
-      // Save to localStorage first
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      // Save to localStorage using storageService
+      saveConfig(config);
       console.log('Saved configuration to localStorage');
 
       // Save to server
@@ -192,7 +190,7 @@ export const useAzureOpenAIConfig = (options = {}) => {
     config,
     setConfig,
     setConfigValue,
-    saveConfig,
+    saveConfig: saveConfigHandler,
     resetConfig,
     error,
     success,

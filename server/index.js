@@ -5,8 +5,16 @@ const OpenAI = require('openai');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('../swagger');
 
-// Configure multer for image uploads
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3002;
+
+// Configure multer for file uploads (both image and voice)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads';
@@ -23,26 +31,21 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: function (req, file, cb) {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed!'), false);
+    // Accept image and audio files
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('audio/')) {
+      return cb(new Error('Only image and audio files are allowed!'), false);
     }
     cb(null, true);
   }
 });
 
-dotenv.config();
-
-const app = express();
-const port = process.env.PORT || 3002; // Changed from 3001 to 3002 to avoid port conflict
-
 // Enhanced logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Request received`);
-  console.log('Headers:', JSON.stringify(req.headers));
   
   // Log response after it's sent
   res.on('finish', () => {
@@ -53,9 +56,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AI Chat API Documentation"
+}));
 
 // In-memory storage for Azure OpenAI configuration
 let azureConfig = {
@@ -68,9 +79,24 @@ let azureConfig = {
   memoryLimit: parseInt(process.env.AZURE_OPENAI_MEMORY_LIMIT) || 6,
   includeSystemMessage: process.env.AZURE_OPENAI_INCLUDE_SYSTEM === 'true',
   systemMessage: process.env.AZURE_OPENAI_SYSTEM_MESSAGE || 'You are a helpful assistant.',
+  // New property for vision models
+  visionModel: process.env.AZURE_OPENAI_VISION_MODEL || '',
 };
 
-// Health check endpoint
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Check server health and configuration status
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheck'
+ */
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -78,7 +104,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Configuration endpoints
+/**
+ * @swagger
+ * /api/config:
+ *   get:
+ *     summary: Get current Azure OpenAI configuration
+ *     tags: [Configuration]
+ *     responses:
+ *       200:
+ *         description: Current configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Config'
+ */
 app.get('/api/config', (req, res) => {
   // Return masked API key for security
   const maskedConfig = {
@@ -88,6 +127,22 @@ app.get('/api/config', (req, res) => {
   res.json(maskedConfig);
 });
 
+/**
+ * @swagger
+ * /api/config:
+ *   post:
+ *     summary: Update Azure OpenAI configuration
+ *     tags: [Configuration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Config'
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ */
 app.post('/api/config', (req, res) => {
   const { 
     apiKey, 
@@ -98,7 +153,8 @@ app.post('/api/config', (req, res) => {
     memoryMode,
     memoryLimit,
     includeSystemMessage,
-    systemMessage
+    systemMessage,
+    visionModel    // New parameter for vision model
   } = req.body;
   
   // Add validation
@@ -161,6 +217,7 @@ app.post('/api/config', (req, res) => {
     memoryLimit: memoryLimit !== undefined ? parseInt(memoryLimit) : azureConfig.memoryLimit,
     includeSystemMessage: includeSystemMessage !== undefined ? includeSystemMessage : azureConfig.includeSystemMessage,
     systemMessage: systemMessage || azureConfig.systemMessage,
+    visionModel: visionModel || azureConfig.visionModel, // Add vision model configuration
   };
   
   console.log('Configuration updated successfully:', {
@@ -169,6 +226,7 @@ app.post('/api/config', (req, res) => {
     memoryMode: azureConfig.memoryMode,
     memoryLimit: azureConfig.memoryLimit,
     includeSystemMessage: azureConfig.includeSystemMessage,
+    visionModel: azureConfig.visionModel,
     // Don't log the API key for security
   });
   
@@ -178,24 +236,73 @@ app.post('/api/config', (req, res) => {
   });
 });
 
-// Chat endpoint with enhanced error logging
-app.post('/api/chat', upload.single('image'), async (req, res) => {
+/**
+ * Helper function to convert a file to base64
+ */
+function fileToBase64(filePath) {
+  return fs.readFileSync(filePath, { encoding: 'base64' });
+}
+
+/**
+ * Helper function to get MIME type based on file extension
+ */
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
+
+/**
+ * @swagger
+ * /api/chat:
+ *   post:
+ *     summary: Send a message to Azure OpenAI
+ *     tags: [Chat]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/ChatMessage'
+ *     responses:
+ *       200:
+ *         description: AI response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ChatResponse'
+ *       400:
+ *         description: Azure OpenAI is not configured
+ *       500:
+ *         description: Server error
+ */
+app.post('/api/chat', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'voice', maxCount: 1 }
+]), async (req, res) => {
   try {
     // Log the request details
     console.log('--- Chat Request Details ---');
     console.log('Request body:', req.body);
-    console.log('File attached:', req.file ? `Yes (${req.file.originalname}, ${req.file.size} bytes)` : 'No');
+    console.log('Files attached:', req.files ? JSON.stringify(Object.keys(req.files)) : 'None');
     console.log('Content type:', req.get('Content-Type'));
     
     const message = req.body.message || '';
     const previousMessages = req.body.previousMessages ? JSON.parse(req.body.previousMessages) : [];
     
     // Validate the request
-    if (!message && !req.file) {
-      console.log('Error: No message or image provided');
+    if (!message && (!req.files || Object.keys(req.files).length === 0)) {
+      console.log('Error: No message or file provided');
       return res.status(400).json({ 
-        error: 'No message or image provided',
-        details: 'Please provide either a text message or an image' 
+        error: 'No message or file provided',
+        details: 'Please provide either a text message, image, or voice recording' 
       });
     }
     
@@ -216,18 +323,6 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
     });
 
     console.log('OpenAI client initialized with deployment:', azureConfig.deploymentName);
-
-    // Prepare the current user message
-    let userMessage = message;
-    
-    // Add image content if present
-    if (req.file) {
-      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      console.log('Image URL:', imageUrl);
-      
-      // For standard models, we just mention the image
-      userMessage += `\n[Image: ${imageUrl}]`;
-    }
 
     // Prepare messages array based on memory settings
     let messages = [];
@@ -251,13 +346,69 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
       messages = [...messages, ...historyMessages];
     }
 
+    // Prepare the current user message
+    let userContent;
+
+    // Check if there's an image to process
+    if (req.files && req.files.image && req.files.image.length > 0) {
+      const imageFile = req.files.image[0];
+      
+      // For images, we need to use the multimodal format with content array
+      userContent = [
+        // First add the text part if there is any
+        ...(message ? [{ type: 'text', text: message }] : []),
+        
+        // Then add the image part
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:${getMimeType(imageFile.path)};base64,${fileToBase64(imageFile.path)}`,
+            detail: 'high'
+          }
+        }
+      ];
+      
+      // Save the URL for client access
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${imageFile.filename}`;
+      console.log('Image URL for client:', imageUrl);
+    } else {
+      // If no image, just use the text message
+      userContent = message;
+    }
+
+    // If a voice recording was uploaded, add it to the message as a text reference
+    // (OpenAI doesn't directly process audio in the same way as images)
+    if (req.files && req.files.voice && req.files.voice.length > 0) {
+      const voiceFile = req.files.voice[0];
+      const voiceUrl = `${req.protocol}://${req.get('host')}/uploads/${voiceFile.filename}`;
+      console.log('Voice URL:', voiceUrl);
+      
+      // If userContent is an array (already has an image), add text about voice
+      if (Array.isArray(userContent)) {
+        // Find the text entry or add a new one
+        const textIndex = userContent.findIndex(item => item.type === 'text');
+        if (textIndex >= 0) {
+          userContent[textIndex].text += `\n[Voice Recording available at: ${voiceUrl}]`;
+        } else {
+          userContent.unshift({
+            type: 'text',
+            text: `[Voice Recording available at: ${voiceUrl}]`
+          });
+        }
+      } else {
+        // If userContent is just text, append the voice info
+        userContent = userContent + `\n[Voice Recording available at: ${voiceUrl}]`;
+      }
+    }
+
     // Finally, add the current user message
-    messages.push({ role: 'user', content: userMessage });
+    messages.push({ role: 'user', content: userContent });
 
     console.log('Memory mode:', azureConfig.memoryMode);
     console.log('Total messages being sent to OpenAI:', messages.length);
+    console.log('User message format:', Array.isArray(userContent) ? 'multimodal' : 'text');
 
-    // Call OpenAI API
+    // Call OpenAI API with vision support if needed
     const completion = await client.chat.completions.create({
       model: azureConfig.deploymentName,
       messages: messages,
@@ -278,6 +429,18 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         totalTokens: completion.usage.total_tokens
       } : null
     };
+    
+    // If an image was uploaded, include its URL in the response for the client
+    if (req.files && req.files.image && req.files.image.length > 0) {
+      const imageFile = req.files.image[0];
+      response.imageUrl = `${req.protocol}://${req.get('host')}/uploads/${imageFile.filename}`;
+    }
+    
+    // If a voice recording was uploaded, include its URL in the response
+    if (req.files && req.files.voice && req.files.voice.length > 0) {
+      const voiceFile = req.files.voice[0];
+      response.voiceUrl = `${req.protocol}://${req.get('host')}/uploads/${voiceFile.filename}`;
+    }
     
     res.json(response);
   } catch (error) {
@@ -308,7 +471,7 @@ app.use((req, res, next) => {
   res.status(404).json({
     error: 'Not Found',
     message: `The requested endpoint ${req.originalUrl} does not exist`,
-    availableEndpoints: ['/api/health', '/api/config', '/api/chat']
+    availableEndpoints: ['/api/health', '/api/config', '/api/chat', '/api-docs']
   });
 });
 
@@ -321,8 +484,35 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Cleanup uploaded files periodically
+setInterval(() => {
+  const uploadDir = 'uploads';
+  if (fs.existsSync(uploadDir)) {
+    fs.readdir(uploadDir, (err, files) => {
+      if (err) return console.error(err);
+
+      const now = Date.now();
+      files.forEach(file => {
+        const filePath = path.join(uploadDir, file);
+        fs.stat(filePath, (err, stats) => {
+          if (err) return console.error(err);
+
+          // Delete files older than 24 hours
+          if (now - stats.mtime.getTime() > 24 * 60 * 60 * 1000) {
+            fs.unlink(filePath, err => {
+              if (err) console.error(err);
+              else console.log(`Cleaned up old file: ${file}`);
+            });
+          }
+        });
+      });
+    });
+  }
+}, 60 * 60 * 1000); // Run every hour
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  console.log(`API documentation available at http://localhost:${port}/api-docs`);
   console.log(`Available endpoints:`);
   console.log(`  GET  /api/health - Check server health`);
   console.log(`  GET  /api/config - Get configuration`);

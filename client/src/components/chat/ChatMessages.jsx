@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   Text,
   makeStyles,
@@ -12,21 +12,30 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
-  PlayRegular, 
-  PauseRegular, 
-  InfoRegular, 
   ErrorCircleRegular,
   ArrowResetRegular,
   DataUsageRegular
 } from '@fluentui/react-icons';
 import { useChat } from '../../contexts/ChatContext';
+import { VariableSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+import AudioPlayer from '../audio/AudioPlayer';
+import { ErrorDisplay } from '../ErrorDisplay';
+import { ChatActionBar } from './ChatActionBar';
 
 const useStyles = makeStyles({
+  // Add wrapper for container to hold both messages and action bar
+  chatWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    overflow: 'hidden',
+  },
   chatContainer: {
     display: 'flex',
     flexDirection: 'column',
     flexGrow: 1,
-    overflowY: 'auto',
+    overflow: 'hidden',
     padding: '20px',
     ...shorthands.gap('10px'),
   },
@@ -53,48 +62,7 @@ const useStyles = makeStyles({
   messageAudio: {
     maxWidth: '100%',
   },
-  audioContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    padding: '8px',
-    backgroundColor: tokens.colorNeutralBackground4,
-    borderRadius: '4px',
-    marginTop: '4px',
-  },
-  audioControls: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-  },
-  audioProgress: {
-    flexGrow: 1,
-    height: '4px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: '2px',
-    position: 'relative',
-    cursor: 'pointer',
-  },
-  audioProgressFill: {
-    height: '100%',
-    backgroundColor: tokens.colorBrandBackground,
-    borderRadius: '2px',
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  audioTime: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground2,
-    whiteSpace: 'nowrap',
-  },
-  audioError: {
-    color: tokens.colorStatusDangerForeground1,
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('4px'),
-    fontSize: '12px',
-  },
+  // Audio-related styles removed as they're now in AudioPlayer component
   userMessage: {
     alignSelf: 'flex-end',
     backgroundColor: tokens.colorBrandBackground,
@@ -200,6 +168,25 @@ const useStyles = makeStyles({
       paddingLeft: '10px',
       color: tokens.colorNeutralForeground2,
     },
+    // Add proper styling for lists
+    '& ul, & ol': {
+      paddingLeft: '20px',  // Reduce default padding
+      marginTop: '4px',
+      marginBottom: '4px',
+      boxSizing: 'border-box',
+      width: '100%',
+    },
+    '& li': {
+      marginBottom: '4px',
+      // Ensure text wraps properly
+      overflowWrap: 'break-word',
+      wordWrap: 'break-word',
+      wordBreak: 'break-word',
+    },
+    // Ensure all content wraps properly
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
+    width: '100%',
   },
   timestampTooltip: {
     position: 'absolute',
@@ -266,9 +253,17 @@ const useStyles = makeStyles({
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
   },
+  tokenTextUser: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForegroundOnBrand, // Use the same color as user message text
+  },
   tokenIcon: {
     fontSize: '10px',
     color: tokens.colorNeutralForeground3,
+  },
+  tokenIconUser: {
+    fontSize: '10px',
+    color: tokens.colorNeutralForegroundOnBrand, // Use the same color as user message text
   },
   tokenBadge: {
     backgroundColor: tokens.colorBrandBackground,
@@ -288,144 +283,119 @@ const useStyles = makeStyles({
     marginBottom: '4px',
     fontSize: '12px',
   },
+  // Skeleton UI styles
+  skeletonContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.gap('20px'),
+    padding: '20px',
+    width: '100%',
+  },
+  skeletonMessage: {
+    padding: '15px',
+    borderRadius: '8px',
+    maxWidth: '70%',
+  },
+  skeletonUser: {
+    alignSelf: 'flex-end',
+    backgroundColor: `${tokens.colorBrandBackground}40`,
+  },
+  skeletonAi: {
+    alignSelf: 'flex-start',
+    backgroundColor: `${tokens.colorNeutralBackground3}80`,
+  },
+  skeletonContent: {
+    height: '40px',
+    width: '100%',
+    borderRadius: '4px',
+    animation: {
+      '0%': {
+        opacity: 0.6,
+      },
+      '50%': {
+        opacity: 0.3,
+      },
+      '100%': {
+        opacity: 0.6,
+      }
+    },
+    animationDuration: '1.5s',
+    animationIterationCount: 'infinite',
+  },
+  skeletonLoading: {
+    alignSelf: 'center',
+    padding: '10px',
+  },
+  // Empty state styles
+  emptyStateContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    width: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    pointerEvents: 'none',
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+  },
 });
 
-// Custom audio player component is being used but needs to be referenced correctly
-const AudioPlayer = ({ src, className }) => {
-  const styles = useStyles();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const audioRef = useRef(null);
-  const progressRef = useRef(null);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setIsLoading(false);
-    };
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      audio.currentTime = 0;
-    };
-
-    const handleError = (e) => {
-      setError('Failed to load audio');
-      setIsLoading(false);
-      console.error('Audio error:', e);
-    };
-
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
-
-    return () => {
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
-    };
-  }, []);
-
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play().catch(err => {
-        setError('Failed to play audio: ' + err.message);
-        console.error('Play error:', err);
-      });
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleProgressClick = (e) => {
-    if (!progressRef.current || duration === 0) return;
-    
-    const rect = progressRef.current.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
-    const newTime = pos * duration;
-    
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  };
-
-  return (
-    <div className={styles.audioContainer}>
-      <audio 
-        ref={audioRef} 
-        src={src} 
-        className={className}
-        preload="metadata"
-        style={{ display: 'none' }}
-      />
-      
-      {isLoading ? (
-        <div className={styles.audioControls}>
-          <Spinner size="tiny" label="Loading audio..." />
-        </div>
-      ) : error ? (
-        <div className={styles.audioError}>
-          <InfoRegular />
-          <span>{error}</span>
-        </div>
-      ) : (
-        <>
-          <Button
-            icon={isPlaying ? <PauseRegular /> : <PlayRegular />}
-            appearance="subtle"
-            onClick={togglePlayPause}
-          />
-          
-          <div className={styles.audioProgress} ref={progressRef} onClick={handleProgressClick}>
-            <div 
-              className={styles.audioProgressFill} 
-              style={{ width: `${(currentTime / duration) * 100}%` }}
-            />
-          </div>
-          
-          <span className={styles.audioTime}>
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-        </>
-      )}
-    </div>
-  );
-};
-
-export const ChatMessages = ({ messages, error, isLoading }) => {
+export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => {
   const styles = useStyles();
   const messagesEndRef = useRef(null);
+  const listRef = useRef(null);
+  const sizeCache = useRef({});
   const { handleRetry } = useChat();
   const [retryingIds, setRetryingIds] = useState(new Set());
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  // Calculate and cache message heights for virtualized list
+  const getMessageHeight = useCallback((index) => {
+    // Use cached height if available
+    if (sizeCache.current[index] !== undefined) {
+      return sizeCache.current[index];
+    }
+
+    const message = messages[index];
+    if (!message) return 100; // Default height
+
+    // Estimate height based on content
+    const baseHeight = 80;
+    const textLength = message.text?.length || 0;
+    const hasImage = message.image ? 300 : 0;
+    const hasVoice = message.voice ? 100 : 0;
+    const hasError = message.hasError ? 40 : 0;
+    
+    // Estimate text height (about 20px per 100 chars)
+    const textHeight = Math.max(20, Math.ceil(textLength / 50) * 20);
+    
+    // Calculate total height and cache it
+    const totalHeight = baseHeight + textHeight + hasImage + hasVoice + hasError;
+    sizeCache.current[index] = totalHeight;
+    
+    return totalHeight;
+  }, [messages]);
+
+  // Reset size cache when messages change
+  useEffect(() => {
+    sizeCache.current = {};
+  }, [messages.length]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (listRef.current && messages.length > 0) {
+      listRef.current.scrollToItem(messages.length - 1);
+    }
+  }, [messages.length]);
   
   // Helper function for retry with better state management
   const onRetryMessage = (e, failedMessageId, originalInput, originalImage, originalVoice) => {
@@ -498,7 +468,7 @@ export const ChatMessages = ({ messages, error, isLoading }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <DataUsageRegular className={styles.tokenIcon} />
             <Text className={styles.tokenText}>
-              {formatNumber(message.tokenUsage.totalTokens)} tokens
+              {formatNumber(message.tokenUsage.completionTokens)} tokens
             </Text>
           </div>
         </Tooltip>
@@ -506,100 +476,88 @@ export const ChatMessages = ({ messages, error, isLoading }) => {
     );
   };
 
-  return (
-    <div className={styles.chatContainer}>
-      {messages.map((message, index) => {
-        const isError = message.hasError && !retryingIds.has(message.id);
-        const isUser = message.sender === 'user';
+  // Helper function to render prompt tokens for user messages
+  const renderPromptTokens = (message) => {
+    if (!message.promptTokens) return null;
+    
+    return (
+      <div className={styles.tokenInfo}>
+        <Tooltip
+          content={
+            <div className={styles.tokenTooltipContent}>
+              <div className={styles.tokenStatsRow}>
+                <Text>Prompt Tokens:</Text>
+                <Text weight="semibold">{formatNumber(message.promptTokens)}</Text>
+              </div>
+            </div>
+          }
+          relationship="label"
+          positioning="above"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <DataUsageRegular className={styles.tokenIconUser} />
+            <Text className={styles.tokenTextUser}>
+              {formatNumber(message.promptTokens)} tokens
+            </Text>
+          </div>
+        </Tooltip>
+      </div>
+    );
+  };
 
-        // For messages with errors, we'll use a different container structure
-        if (isError) {
-          return (
-            <div 
-              key={index}
+  // Custom row renderer for virtualized list
+  const MessageRow = ({ index, style }) => {
+    const message = messages[index];
+    const isError = message.hasError && !retryingIds.has(message.id);
+    const isUser = message.sender === 'user';
+
+    // For messages with errors, use a different container structure
+    if (isError) {
+      return (
+        <div 
+          style={{
+            ...style,
+            display: 'flex',
+            justifyContent: isUser ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <div className={`
+            ${styles.messageWithErrorContainer} 
+            ${!isUser ? styles.messageWithErrorContainerAi : ''}
+          `}>
+            {/* Error indicator positioned to the left */}
+            <div className={`
+              ${styles.errorIndicatorLeft} 
+              ${!isUser ? styles.errorIndicatorLeftAi : ''}
+            `}>
+              <ErrorCircleRegular />
+              <Text className={styles.errorMessage}>
+                {getErrorMessage(message.error)}
+              </Text>
+              <Button 
+                icon={<ArrowResetRegular />}
+                appearance="subtle"
+                size="small"
+                onClick={(e) => onRetryMessage(
+                  e,
+                  message.id, 
+                  message.originalInput,
+                  message.originalImage,
+                  message.originalVoice
+                )}
+              >
+                Retry
+              </Button>
+            </div>
+
+            {/* Message bubble */}
+            <div
               className={`
-                ${styles.messageWithErrorContainer} 
-                ${!isUser ? styles.messageWithErrorContainerAi : ''}
+                ${styles.messageContainer} 
+                ${isUser ? styles.userMessage : styles.aiMessage}
+                ${styles.messageContainerWithHover}
               `}
             >
-              {/* Error indicator positioned to the left */}
-              <div className={`
-                ${styles.errorIndicatorLeft} 
-                ${!isUser ? styles.errorIndicatorLeftAi : ''}
-              `}>
-                <ErrorCircleRegular />
-                <Text className={styles.errorMessage}>
-                  {getErrorMessage(message.error)}
-                </Text>
-                <Button 
-                  icon={<ArrowResetRegular />}
-                  appearance="subtle"
-                  size="small"
-                  onClick={(e) => onRetryMessage(
-                    e,
-                    message.id, 
-                    message.originalInput,
-                    message.originalImage,
-                    message.originalVoice
-                  )}
-                >
-                  Retry
-                </Button>
-              </div>
-
-              {/* Message bubble */}
-              <div
-                className={`
-                  ${styles.messageContainer} 
-                  ${isUser ? styles.userMessage : styles.aiMessage}
-                  ${styles.messageContainerWithHover}
-                `}
-              >
-                <div className={styles.messageContent}>
-                  {message.text && (
-                    <div className={styles.markdown}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.text}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                  {message.image && (
-                    <img 
-                      src={message.image} 
-                      alt="Attached" 
-                      className={styles.messageImage}
-                    />
-                  )}
-                  {message.voice && (
-                    <AudioPlayer 
-                      src={message.voice} 
-                      className={styles.messageAudio} 
-                    />
-                  )}
-                </div>
-                <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-          );
-        }
-        
-        // For regular messages without errors, use the standard layout
-        return (
-          <div
-            key={index}
-            className={`
-              ${styles.messageContainer} 
-              ${isUser ? styles.userMessage : styles.aiMessage}
-              ${styles.messageContainerWithHover}
-            `}
-          >
-            {message.isLoading ? (
-              <div className={styles.messageContent}>
-                <Spinner size="tiny" label="AI is thinking..." />
-              </div>
-            ) : message.isRetrying || retryingIds.has(message.id) ? (
               <div className={styles.messageContent}>
                 {message.text && (
                   <div className={styles.markdown}>
@@ -621,47 +579,162 @@ export const ChatMessages = ({ messages, error, isLoading }) => {
                     className={styles.messageAudio} 
                   />
                 )}
-                <div className={styles.retryingIndicator}>
-                  <Spinner size="tiny" />
-                  <Text>Retrying message...</Text>
-                </div>
               </div>
-            ) : (
-              <div className={styles.messageContent}>
-                {message.text && (
-                  <div className={styles.markdown}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.text}
-                    </ReactMarkdown>
-                  </div>
-                )}
-                {message.image && (
-                  <img 
-                    src={message.image} 
-                    alt="Attached" 
-                    className={styles.messageImage}
-                  />
-                )}
-                {message.voice && (
-                  <AudioPlayer 
-                    src={message.voice} 
-                    className={styles.messageAudio} 
-                  />
-                )}
-                {!isUser && message.tokenUsage && renderTokenUsage(message)}
+              <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
+                {new Date(message.timestamp).toLocaleTimeString()}
               </div>
-            )}
-            <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
-              {new Date(message.timestamp).toLocaleTimeString()}
             </div>
           </div>
-        );
-      })}
+        </div>
+      );
+    }
+    
+    // For regular messages without errors, use the standard layout
+    return (
+      <div
+        style={{
+          ...style,
+          display: 'flex',
+          justifyContent: isUser ? 'flex-end' : 'flex-start',
+          paddingRight: isUser ? '20px' : '0',
+          paddingLeft: isUser ? '0' : '20px'
+        }}
+      >
+        <div
+          className={`
+            ${styles.messageContainer} 
+            ${isUser ? styles.userMessage : styles.aiMessage}
+            ${styles.messageContainerWithHover}
+          `}
+        >
+          {message.isLoading ? (
+            <div className={styles.messageContent}>
+              <Spinner size="tiny" label="AI is thinking..." />
+            </div>
+          ) : message.isRetrying || retryingIds.has(message.id) ? (
+            <div className={styles.messageContent}>
+              {message.text && (
+                <div className={styles.markdown}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+              {message.image && (
+                <img 
+                  src={message.image} 
+                  alt="Attached" 
+                  className={styles.messageImage}
+                />
+              )}
+              {message.voice && (
+                <AudioPlayer 
+                  src={message.voice} 
+                  className={styles.messageAudio} 
+                />
+              )}
+              <div className={styles.retryingIndicator}>
+                <Spinner size="tiny" />
+                <Text>Retrying message...</Text>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.messageContent}>
+              {message.text && (
+                <div className={styles.markdown}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+              {message.image && (
+                <img 
+                  src={message.image} 
+                  alt="Attached" 
+                  className={styles.messageImage}
+                />
+              )}
+              {message.voice && (
+                <AudioPlayer 
+                  src={message.voice} 
+                  className={styles.messageAudio} 
+                />
+              )}
+              {!isUser && message.tokenUsage && renderTokenUsage(message)}
+              {isUser && message.promptTokens && renderPromptTokens(message)}
+            </div>
+          )}
+          <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
+            {new Date(message.timestamp).toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Empty message placeholder for virtualized list
+  const EmptyMessage = () => (
+    <div className={styles.emptyStateContainer}>
+      {messages.length === 0 && !isLoading ? (
+        <div className={styles.emptyState}>
+          <Text size={400}>Type a message to start chatting</Text>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  // Skeleton UI for loading state
+  const ChatSkeleton = () => (
+    <div className={styles.skeletonContainer}>
+      <div className={`${styles.skeletonMessage} ${styles.skeletonUser}`}>
+        <div className={styles.skeletonContent} />
+      </div>
+      <div className={styles.skeletonLoading}>
+        <Spinner size="tiny" label="Loading conversation..." />
+      </div>
+      <div className={`${styles.skeletonMessage} ${styles.skeletonAi}`}>
+        <div className={styles.skeletonContent} />
+      </div>
+      <div className={`${styles.skeletonMessage} ${styles.skeletonUser}`}>
+        <div className={styles.skeletonContent} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={styles.chatWrapper}>
+      <div className={styles.chatContainer}>
+        {isInitializing ? (
+          <ChatSkeleton />
+        ) : messages.length === 0 ? (
+          <EmptyMessage />
+        ) : (
+          <AutoSizer>
+            {({ height, width }) => (
+              <List
+                ref={listRef}
+                height={height}
+                width={width}
+                itemCount={messages.length}
+                itemSize={getMessageHeight}
+                overscanCount={5}
+                onScroll={() => setIsScrolling(true)}
+                onScrollEnd={() => setIsScrolling(false)}
+              >
+                {MessageRow}
+              </List>
+            )}
+          </AutoSizer>
+        )}
+        
+        {error && <ErrorDisplay message={error} type="error" onDismiss={() => setError('')} />}
+        
+        {/* Add a blank div for scrolling to the bottom */}
+        <div ref={messagesEndRef} />
+      </div>
       
-      {error && <Text className={styles.error}>{error}</Text>}
-      
-      {/* Add a blank div for scrolling to the bottom */}
-      <div ref={messagesEndRef} />
+      {/* Add the action bar with clear chat button */}
+      <ChatActionBar onClearChat={useChat().handleClearChat} isConfigured={useChat().isConfigured} />
     </div>
   );
 };

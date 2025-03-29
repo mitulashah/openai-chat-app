@@ -4,6 +4,7 @@ import { ChatMessages } from './components/chat/ChatMessages';
 import { MessageInput } from './components/chat/MessageInput';
 import { Footer } from './components/chat/Footer';
 import { AdminPanel } from './components/AdminPanel';
+import { ErrorDisplay } from './components/ErrorDisplay';
 import { useTheme } from './hooks/useTheme';
 import { ChatProvider, useChat } from './contexts/ChatContext';
 import { makeStyles } from '@fluentui/react-components';
@@ -15,6 +16,8 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100vh',
     backgroundColor: tokens.colorNeutralBackground1,
+    position: 'relative',
+    overflow: 'hidden',
   },
   error: {
     color: tokens.colorPaletteRedForeground1,
@@ -27,6 +30,22 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
   },
+  // New theme transition overlay
+  themeTransitionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+    zIndex: 9999,
+    opacity: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    transition: 'opacity 300ms ease',
+  },
+  themeTransitioning: {
+    opacity: 0.15,
+  }
 });
 
 // Configuration for app branding
@@ -39,7 +58,7 @@ const APP_CONFIG = {
  * Main App component that provides the theme and chat context
  */
 function App() {
-  const { currentTheme, currentThemeName, handleThemeChange } = useTheme();
+  const { currentTheme, currentThemeName, handleThemeChange, isTransitioning } = useTheme();
   
   return (
     <FluentProvider theme={currentTheme}>
@@ -48,6 +67,7 @@ function App() {
           currentTheme={currentTheme}
           currentThemeName={currentThemeName}
           handleThemeChange={handleThemeChange}
+          isTransitioning={isTransitioning}
         />
       </ChatProvider>
     </FluentProvider>
@@ -55,7 +75,7 @@ function App() {
 }
 
 // Main content component that uses the chat context
-const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
+const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange, isTransitioning }) => {
   const styles = useStyles();
   const { 
     messages, 
@@ -76,11 +96,15 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
     isLoading,
     configLoading,
     memorySettings,
-    tokenUsage
+    tokenUsage,
+    isInitializing
   } = useChat();
 
   return (
     <div className={styles.root}>
+      {/* Theme transition overlay */}
+      <div className={`${styles.themeTransitionOverlay} ${isTransitioning ? styles.themeTransitioning : ''}`} />
+      
       <ChatHeader 
         onClearChat={handleClearChat} 
         onOpenSettings={() => setIsAdminPanelOpen(true)}
@@ -90,15 +114,19 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
       
       <div className={styles.chatContent}>
         {!isConfigured && !configLoading && (
-          <Text className={styles.error}>
-            Azure OpenAI is not configured. Please configure it in the settings menu.
-          </Text>
+          <ErrorDisplay 
+            message="Azure OpenAI is not configured. Please configure it in the settings menu."
+            type="warning"
+            actionLabel="Open Settings"
+            onAction={() => setIsAdminPanelOpen(true)}
+          />
         )}
         
         <ChatMessages 
           messages={messages} 
           error={error} 
           isLoading={isLoading}
+          isInitializing={isInitializing}
         />
         
         <MessageInput 
@@ -120,9 +148,9 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
         currentTheme={currentTheme}
         currentThemeName={currentThemeName}
         handleThemeChange={handleThemeChange}
-        onClearChat={handleClearChat}
         memorySettings={memorySettings}
         tokenUsage={tokenUsage}
+        isTransitioning={isTransitioning}
       />
       
       <AdminPanel 

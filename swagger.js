@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3001',
+        url: 'http://localhost:3002',
         description: 'Development server',
       },
     ],
@@ -33,6 +33,13 @@ const options = {
               format: 'binary',
               description: 'Optional voice recording file to be attached with the message',
             },
+            previousMessages: {
+              type: 'array',
+              description: 'Previous messages in the conversation (for context)',
+              items: {
+                type: 'object'
+              }
+            }
           },
         },
         ChatResponse: {
@@ -47,6 +54,24 @@ const options = {
               format: 'date-time',
               description: 'Timestamp of the response',
             },
+            tokenUsage: {
+              type: 'object',
+              description: 'Token usage statistics',
+              properties: {
+                promptTokens: {
+                  type: 'number',
+                  description: 'Number of tokens used in the prompt'
+                },
+                completionTokens: {
+                  type: 'number',
+                  description: 'Number of tokens used in the completion'
+                },
+                totalTokens: {
+                  type: 'number',
+                  description: 'Total number of tokens used'
+                }
+              }
+            }
           },
         },
         Config: {
@@ -76,6 +101,23 @@ const options = {
               maximum: 1,
               description: 'Top P setting for the model (0-1)',
             },
+            memoryMode: {
+              type: 'string',
+              enum: ['none', 'limited', 'full'],
+              description: 'Memory mode for conversation history'
+            },
+            memoryLimit: {
+              type: 'number',
+              description: 'Number of message pairs to remember when in limited memory mode'
+            },
+            includeSystemMessage: {
+              type: 'boolean',
+              description: 'Whether to include a system message in the conversation'
+            },
+            systemMessage: {
+              type: 'string',
+              description: 'System message to include in the conversation'
+            }
           },
         },
         HealthCheck: {
@@ -95,7 +137,7 @@ const options = {
       },
     },
   },
-  apis: ['./server.js'], // Path to the API routes
+  apis: ['./server/index.js'], // Updated path to point to our new consolidated server file
   swaggerDefinition: {
     openapi: '3.0.0',
     info: {
@@ -105,7 +147,7 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3001',
+        url: 'http://localhost:3002',
         description: 'Development server',
       },
     ],

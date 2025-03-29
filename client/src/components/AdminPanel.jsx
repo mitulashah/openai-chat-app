@@ -16,10 +16,15 @@ import {
   RadioGroup,
   Radio,
   Checkbox,
-  Textarea
+  Textarea,
+  Tab,
+  TabList,
+  Divider
 } from '@fluentui/react-components';
 import { useState, useEffect } from 'react';
+import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import { useAzureOpenAIConfig } from '../hooks/useAzureOpenAIConfig';
+import { ErrorDisplay } from './ErrorDisplay';
 
 const useStyles = makeStyles({
   form: {
@@ -88,6 +93,63 @@ const useStyles = makeStyles({
   },
   systemMessageInput: {
     marginTop: '8px',
+  },
+  // New styles for collapsible sections
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    padding: '8px 0',
+    borderRadius: '4px',
+    ...shorthands.padding('8px', '12px'),
+    ...shorthands.margin('4px', '0'),
+  },
+  sectionHeaderTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: tokens.colorBrandForeground1,
+    marginLeft: '8px',
+  },
+  sectionContent: {
+    ...shorthands.padding('0', '0', '8px', '12px'),
+    overflow: 'hidden',
+    transition: 'max-height 0.3s ease-in-out',
+  },
+  // New styles for tab layout and wider dialog
+  wideSurface: {
+    width: '700px',
+    maxWidth: '90vw',
+  },
+  tabContent: {
+    padding: '16px 0',
+    height: '450px', /* Increased fixed height for consistent dialog size */
+    overflowY: 'auto', /* Make content scrollable if it exceeds the height */
+  },
+  tabContainer: {
+    marginTop: '10px',
+  },
+  // Error and status styling unified with app-wide standards
+  errorContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('8px'),
+    padding: '10px 12px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    color: tokens.colorPaletteRedForeground1,
+    fontSize: '14px',
+    marginTop: '10px',
+  },
+  successContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('8px'),
+    padding: '10px 12px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+    color: tokens.colorPaletteGreenForeground1,
+    fontSize: '14px',
+    marginTop: '10px',
   }
 });
 
@@ -208,14 +270,12 @@ function SectionHeading({ title }) {
  * @returns {JSX.Element}
  */
 function StatusMessage({ error, success }) {
-  const styles = useStyles();
-  
   if (error) {
-    return <Text className={styles.error}>{error}</Text>;
+    return <ErrorDisplay message={error} type="error" />;
   }
   
   if (success) {
-    return <Text className={styles.success}>{success}</Text>;
+    return <ErrorDisplay message={success} type="success" />;
   }
   
   return null;
@@ -239,6 +299,14 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
     saveConfig,
     isLoading
   } = useAzureOpenAIConfig({ onConfigSaved, onOpenChange });
+  
+  // Add tab state to keep track of current selected tab
+  const [selectedTab, setSelectedTab] = useState("azure-openai");
+  
+  // Handle tab change events
+  const onTabSelect = (event, data) => {
+    setSelectedTab(data.value);
+  };
 
   // Handle input changes
   const handleInputChange = (field) => (e) => {
@@ -262,107 +330,126 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogSurface>
+      <DialogSurface className={styles.wideSurface}>
         <DialogTitle>Settings</DialogTitle>
         <DialogBody>
           <DialogContent>
             <div className={styles.form}>
-              <SectionHeading title="Azure OpenAI Configuration" />
-              
-              <TextSetting
-                id="apiKey"
-                label="API Key"
-                description="Your Azure OpenAI API key for authentication"
-                value={config.apiKey}
-                onChange={handleInputChange('apiKey')}
-                isPassword={true}
-              />
-              
-              <TextSetting
-                id="endpoint"
-                label="Endpoint URL"
-                description="Your Azure OpenAI service endpoint (e.g., https://your-resource.openai.azure.com)"
-                value={config.endpoint}
-                onChange={handleInputChange('endpoint')}
-              />
-              
-              <TextSetting
-                id="deploymentName"
-                label="Deployment Name"
-                description="The name of your model deployment in Azure OpenAI"
-                value={config.deploymentName}
-                onChange={handleInputChange('deploymentName')}
-              />
-              
-              <SectionHeading title="Model Parameters" />
-              
-              <SliderSetting
-                id="temperature"
-                label="Temperature"
-                description="Controls randomness: Lower values are more deterministic (0.0-1.0)"
-                value={config.temperature}
-                onChange={handleSliderChange('temperature')}
-              />
-              
-              <SliderSetting
-                id="topP"
-                label="Top P"
-                description="Controls diversity via nucleus sampling (0.0-1.0)"
-                value={config.topP}
-                onChange={handleSliderChange('topP')}
-              />
-
-              <SectionHeading title="Conversation Memory" />
-
-              <div className={styles.settingContainer}>
-                <Label className={styles.settingLabel}>Memory Mode</Label>
-                <Text className={styles.settingDescription}>
-                  Control how much conversation history is sent to the model
-                </Text>
+              <div className={styles.tabContainer}>
+                <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
+                  <Tab id="azure-openai-tab" value="azure-openai">Azure OpenAI</Tab>
+                  <Tab id="model-params-tab" value="model-params">Model Parameters</Tab>
+                  <Tab id="memory-tab" value="memory">Conversation Memory</Tab>
+                </TabList>
                 
-                <RadioGroup 
-                  className={styles.radioGroup}
-                  value={config.memoryMode}
-                  onChange={handleMemoryModeChange}
-                >
-                  <Radio value="none" label="No Memory" />
-                  <Radio value="limited" label="Limited Memory" />
-                  <Radio value="full" label="Full Memory" />
-                </RadioGroup>
-
-                {config.memoryMode === 'limited' && (
-                  <div className={styles.conditionalSection}>
-                    <SliderSetting
-                      id="memoryLimit"
-                      label="Message Limit"
-                      description="Number of previous messages to include in context (1-20)"
-                      value={config.memoryLimit}
-                      onChange={handleSliderChange('memoryLimit')}
-                      min={1}
-                      max={20}
-                      step={1}
+                <Divider />
+                
+                {/* Azure OpenAI Configuration */}
+                {selectedTab === "azure-openai" && (
+                  <div className={styles.tabContent}>
+                    <TextSetting
+                      id="apiKey"
+                      label="API Key"
+                      description="Your Azure OpenAI API key for authentication"
+                      value={config.apiKey}
+                      onChange={handleInputChange('apiKey')}
+                      isPassword={true}
+                    />
+                    
+                    <TextSetting
+                      id="endpoint"
+                      label="Endpoint URL"
+                      description="Your Azure OpenAI service endpoint (e.g., https://your-resource.openai.azure.com)"
+                      value={config.endpoint}
+                      onChange={handleInputChange('endpoint')}
+                    />
+                    
+                    <TextSetting
+                      id="deploymentName"
+                      label="Deployment Name"
+                      description="The name of your model deployment in Azure OpenAI"
+                      value={config.deploymentName}
+                      onChange={handleInputChange('deploymentName')}
                     />
                   </div>
                 )}
-
-                <div className={styles.checkboxWrapper}>
-                  <Checkbox 
-                    label="Include System Message" 
-                    checked={config.includeSystemMessage}
-                    onChange={handleCheckboxChange('includeSystemMessage')}
-                  />
-                </div>
-
-                {config.includeSystemMessage && (
-                  <div className={styles.conditionalSection}>
-                    <TextAreaSetting
-                      id="systemMessage"
-                      label="System Message"
-                      description="Custom instructions that define the assistant's behavior"
-                      value={config.systemMessage}
-                      onChange={handleInputChange('systemMessage')}
-                      rows={3}
+                
+                {/* Model Parameters */}
+                {selectedTab === "model-params" && (
+                  <div className={styles.tabContent}>
+                    <SliderSetting
+                      id="temperature"
+                      label="Temperature"
+                      description="Controls randomness: Lower values are more deterministic (0.0-1.0)"
+                      value={config.temperature}
+                      onChange={handleSliderChange('temperature')}
                     />
+                    
+                    <SliderSetting
+                      id="topP"
+                      label="Top P"
+                      description="Controls diversity via nucleus sampling (0.0-1.0)"
+                      value={config.topP}
+                      onChange={handleSliderChange('topP')}
+                    />
+                  </div>
+                )}
+                
+                {/* Conversation Memory */}
+                {selectedTab === "memory" && (
+                  <div className={styles.tabContent}>
+                    <div className={styles.settingContainer}>
+                      <Label className={styles.settingLabel}>Memory Mode</Label>
+                      <Text className={styles.settingDescription}>
+                        Control how much conversation history is sent to the model
+                      </Text>
+                      
+                      <RadioGroup 
+                        className={styles.radioGroup}
+                        value={config.memoryMode}
+                        onChange={handleMemoryModeChange}
+                      >
+                        <Radio value="none" label="No Memory" />
+                        <Radio value="limited" label="Limited Memory" />
+                        <Radio value="full" label="Full Memory" />
+                      </RadioGroup>
+
+                      {config.memoryMode === 'limited' && (
+                        <div className={styles.conditionalSection}>
+                          <SliderSetting
+                            id="memoryLimit"
+                            label="Message Limit"
+                            description="Number of previous messages to include in context (1-20)"
+                            value={config.memoryLimit}
+                            onChange={handleSliderChange('memoryLimit')}
+                            min={1}
+                            max={20}
+                            step={1}
+                          />
+                        </div>
+                      )}
+
+                      <div className={styles.checkboxWrapper}>
+                        <Checkbox 
+                          label="Include System Message" 
+                          checked={config.includeSystemMessage}
+                          onChange={handleCheckboxChange('includeSystemMessage')}
+                        />
+                      </div>
+
+                      {config.includeSystemMessage && (
+                        <div className={styles.conditionalSection}>
+                          <TextAreaSetting
+                            id="systemMessage"
+                            label="System Message"
+                            description="Custom instructions that define the assistant's behavior"
+                            value={config.systemMessage}
+                            onChange={handleInputChange('systemMessage')}
+                            rows={3}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

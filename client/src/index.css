@@ -17,4 +17,23 @@ body {
 /* Ensure the root element takes full viewport height */
 #root {
   height: 100vh;
-} 
+}
+
+/* Theme transition animations */
+*, *::before, *::after {
+  transition-property: background-color, background, color, border-color, box-shadow, fill, stroke;
+  transition-duration: 300ms;
+  transition-timing-function: ease;
+}
+
+/* Exclude certain elements from transitions to prevent unwanted effects */
+.audioProgressFill, 
+.recordingActive,
+button:active,
+button:focus,
+input:focus,
+textarea:focus,
+[role="slider"],
+[class*="skeletonContent"] {
+  transition: none !important;
+}
