@@ -17,11 +17,341 @@ import {
   DataUsageRegular
 } from '@fluentui/react-icons';
 import { useChat } from '../../contexts/ChatContext';
-import { VariableSizeList as List } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
 import AudioPlayer from '../audio/AudioPlayer';
 import { ErrorDisplay } from '../ErrorDisplay';
 import { ChatActionBar } from './ChatActionBar';
+
+// Message component to represent a single message
+const ChatMessage = ({
+  message,
+  isRetrying,
+  onRetry,
+  isLastMessage
+}) => {
+  const styles = useStyles();
+  const isError = message.hasError && !isRetrying;
+  const isUser = message.sender === 'user';
+  
+  // Format timestamp for tooltip
+  const formattedTime = new Date(message.timestamp).toLocaleTimeString();
+  
+  // Format numbers with commas for token displays
+  const formatNumber = (num) => {
+    if (!num && num !== 0) return '0';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  
+  // Helper to categorize error types
+  const getErrorMessage = (errorMsg) => {
+    if (!errorMsg) return "An unknown error occurred";
+    
+    if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+      return "Network error: Unable to reach the server";
+    } else if (errorMsg.includes('429') || errorMsg.includes('rate limit') || errorMsg.includes('quota')) {
+      return "Rate limit exceeded: Try again later";
+    } else if (errorMsg.includes('content') || errorMsg.includes('policy')) {
+      return "Content policy violation: Message couldn't be processed";
+    } else {
+      return errorMsg;
+    }
+  };
+  
+  // Helper function to render token usage for an AI message
+  const renderTokenUsage = () => {
+    if (!message.tokenUsage) return null;
+    
+    return (
+      <div className={styles.tokenInfo}>
+        <Tooltip
+          content={
+            <div className={styles.tokenTooltipContent}>
+              <div className={styles.tokenStatsRow}>
+                <Text>Prompt Tokens:</Text>
+                <Text weight="semibold">{formatNumber(message.tokenUsage.promptTokens)}</Text>
+              </div>
+              <div className={styles.tokenStatsRow}>
+                <Text>Completion Tokens:</Text>
+                <Text weight="semibold">{formatNumber(message.tokenUsage.completionTokens)}</Text>
+              </div>
+              <div className={styles.tokenStatsRow}>
+                <Text>Total Tokens:</Text>
+                <Text weight="semibold">{formatNumber(message.tokenUsage.totalTokens)}</Text>
+              </div>
+            </div>
+          }
+          relationship="label"
+          positioning="above"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <DataUsageRegular className={styles.tokenIcon} />
+            <Text className={styles.tokenText}>
+              {formatNumber(message.tokenUsage.completionTokens)} tokens
+            </Text>
+          </div>
+        </Tooltip>
+      </div>
+    );
+  };
+  
+  // Helper function to render prompt tokens for a user message
+  const renderPromptTokens = () => {
+    if (!message.promptTokens) return null;
+    
+    return (
+      <div className={styles.tokenInfo}>
+        <Tooltip
+          content={
+            <div className={styles.tokenTooltipContent}>
+              <div className={styles.tokenStatsRow}>
+                <Text>Prompt Tokens:</Text>
+                <Text weight="semibold">{formatNumber(message.promptTokens)}</Text>
+              </div>
+            </div>
+          }
+          relationship="label"
+          positioning="above"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <DataUsageRegular className={styles.tokenIconUser} />
+            <Text className={styles.tokenTextUser}>
+              {formatNumber(message.promptTokens)} tokens
+            </Text>
+          </div>
+        </Tooltip>
+      </div>
+    );
+  };
+  
+  // For messages with errors, use a different container structure
+  if (isError) {
+    return (
+      <div className={styles.messageRow}>
+        <div className={`
+          ${styles.messageWithErrorContainer} 
+          ${!isUser ? styles.messageWithErrorContainerAi : ''}
+        `}>
+          {/* Error indicator positioned to the left */}
+          <div className={`
+            ${styles.errorIndicatorLeft} 
+            ${!isUser ? styles.errorIndicatorLeftAi : ''}
+          `}>
+            <ErrorCircleRegular />
+            <Text className={styles.errorMessage}>
+              {getErrorMessage(message.error)}
+            </Text>
+            <Button 
+              icon={<ArrowResetRegular />}
+              appearance="subtle"
+              size="small"
+              onClick={(e) => onRetry(
+                e,
+                message.id, 
+                message.originalInput,
+                message.originalImage,
+                message.originalVoice
+              )}
+            >
+              Retry
+            </Button>
+          </div>
+
+          {/* Message bubble */}
+          <div
+            className={`
+              ${styles.messageContainer} 
+              ${isUser ? styles.userMessage : styles.aiMessage}
+              ${styles.messageContainerWithHover}
+            `}
+          >
+            <div className={styles.messageContent}>
+              {message.text && (
+                <div className={styles.markdown}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Preserve whitespace in code blocks
+                      code: ({node, inline, className, children, ...props}) => {
+                        return inline ? (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <pre className={className}>
+                            <code {...props}>{children}</code>
+                          </pre>
+                        )
+                      },
+                      // Add proper spacing for paragraphs
+                      p: ({node, children, ...props}) => (
+                        <p style={{whiteSpace: 'pre-wrap'}} {...props}>{children}</p>
+                      ),
+                      // Maintain indentation in lists
+                      li: ({node, children, ...props}) => (
+                        <li style={{paddingLeft: '4px'}} {...props}>{children}</li>
+                      )
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+              {message.image && (
+                <img 
+                  src={message.image} 
+                  alt="Attached" 
+                  className={styles.messageImage}
+                />
+              )}
+              {message.voice && (
+                <AudioPlayer 
+                  src={message.voice} 
+                  className={styles.messageAudio} 
+                />
+              )}
+            </div>
+            <div className={`${styles.timestampTooltip} timestampTooltip`}>
+              {formattedTime}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // For regular messages without errors, use the standard layout
+  return (
+    <div 
+      className={styles.messageRow}
+      data-is-last-message={isLastMessage ? 'true' : 'false'}
+      data-sender={isUser ? 'user' : 'ai'}
+    >
+      <div
+        className={`
+          ${styles.messageContainer} 
+          ${isUser ? styles.userMessage : styles.aiMessage}
+          ${styles.messageContainerWithHover}
+        `}
+      >
+        {/* Add sender label that appears on hover */}
+        <div className={`
+          ${styles.senderLabel} 
+          ${isUser ? styles.senderLabelUser : styles.senderLabelAi}
+          senderLabel
+        `}>
+          {isUser ? 'YOU' : 'AI'}
+        </div>
+        {message.isLoading ? (
+          <div className={styles.messageContent}>
+            <Spinner size="tiny" label="AI is thinking..." />
+          </div>
+        ) : isRetrying ? (
+          <div className={styles.messageContent}>
+            {message.text && (
+              <div className={styles.markdown}>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Preserve whitespace in code blocks
+                    code: ({node, inline, className, children, ...props}) => {
+                      return inline ? (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      ) : (
+                        <pre className={className}>
+                          <code {...props}>{children}</code>
+                        </pre>
+                      )
+                    },
+                    // Add proper spacing for paragraphs
+                    p: ({node, children, ...props}) => (
+                      <p style={{whiteSpace: 'pre-wrap'}} {...props}>{children}</p>
+                    ),
+                    // Maintain indentation in lists
+                    li: ({node, children, ...props}) => (
+                      <li style={{paddingLeft: '4px'}} {...props}>{children}</li>
+                    )
+                  }}
+                >
+                  {message.text}
+                </ReactMarkdown>
+              </div>
+            )}
+            {message.image && (
+              <img 
+                src={message.image} 
+                alt="Attached" 
+                className={styles.messageImage}
+              />
+            )}
+            {message.voice && (
+              <AudioPlayer 
+                src={message.voice} 
+                className={styles.messageAudio} 
+              />
+            )}
+            <div className={styles.retryingIndicator}>
+              <Spinner size="tiny" />
+              <Text>Retrying message...</Text>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.messageContent}>
+            {message.text && (
+              <div className={styles.markdown}>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Preserve whitespace in code blocks
+                    code: ({node, inline, className, children, ...props}) => {
+                      return inline ? (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      ) : (
+                        <pre className={className}>
+                          <code {...props}>{children}</code>
+                        </pre>
+                      )
+                    },
+                    // Add proper spacing for paragraphs
+                    p: ({node, children, ...props}) => (
+                      <p style={{whiteSpace: 'pre-wrap'}} {...props}>{children}</p>
+                    ),
+                    // Maintain indentation in lists
+                    li: ({node, children, ...props}) => (
+                      <li style={{paddingLeft: '4px'}} {...props}>{children}</li>
+                    )
+                  }}
+                >
+                  {message.text}
+                </ReactMarkdown>
+              </div>
+            )}
+            {message.image && (
+              <img 
+                src={message.image} 
+                alt="Attached" 
+                className={styles.messageImage}
+              />
+            )}
+            {message.voice && (
+              <AudioPlayer 
+                src={message.voice} 
+                className={styles.messageAudio} 
+              />
+            )}
+            {!isUser && message.tokenUsage && renderTokenUsage()}
+            {isUser && message.promptTokens && renderPromptTokens()}
+          </div>
+        )}
+        <div className={`${styles.timestampTooltip} timestampTooltip`}>
+          {formattedTime}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const useStyles = makeStyles({
   // Add wrapper for container to hold both messages and action bar
@@ -35,23 +365,49 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     flexGrow: 1,
-    overflow: 'hidden',
-    padding: '12px', // Reduced from 20px
-    ...shorthands.gap('6px'), // Reduced from 10px
+    overflow: 'auto', // Changed from hidden to auto for standard scrolling
+    padding: '12px',
+    ...shorthands.gap('6px'),
+  },
+  messagesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    flexGrow: 1,
+    ...shorthands.gap('16px'), // Consistent gap between all messages
+    paddingBottom: '20px', // Extra padding at bottom for better visibility
+  },
+  messageRow: {
+    display: 'flex',
+    width: '100%',
+    padding: '4px 0',
+    position: 'relative',
+    // User messages are aligned to the right
+    '&[data-sender="user"]': {
+      justifyContent: 'flex-end',
+    },
+    // AI messages are aligned to the left
+    '&[data-sender="ai"]': {
+      justifyContent: 'flex-start',
+    },
+    // Extra space for last message
+    '&[data-is-last-message="true"]': {
+      marginBottom: '20px',
+    },
   },
   messageContainer: {
     display: 'flex',
     flexDirection: 'column',
     maxWidth: '80%',
-    padding: '6px 8px', // Reduced from 10px
+    padding: '6px 8px',
     borderRadius: '8px',
-    ...shorthands.gap('3px'), // Reduced from 5px
+    ...shorthands.gap('3px'),
     position: 'relative',
   },
   messageContent: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('4px'), // Reduced from 8px
+    ...shorthands.gap('4px'),
   },
   messageImage: {
     maxWidth: '100%',
@@ -62,14 +418,11 @@ const useStyles = makeStyles({
   messageAudio: {
     maxWidth: '100%',
   },
-  // Audio-related styles removed as they're now in AudioPlayer component
   userMessage: {
-    alignSelf: 'flex-end',
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
   },
   aiMessage: {
-    alignSelf: 'flex-start',
     backgroundColor: tokens.colorNeutralBackground3,
   },
   error: {
@@ -128,19 +481,26 @@ const useStyles = makeStyles({
   },
   markdown: {
     '& p': {
-      margin: 0,
+      margin: '0 0 12px 0', // Add bottom margin to paragraphs for better spacing
+      whiteSpace: 'pre-wrap', // Preserve whitespace including line breaks
+    },
+    '& p:last-child': {
+      marginBottom: 0, // Remove margin from last paragraph to avoid extra space
     },
     '& pre': {
       backgroundColor: tokens.colorNeutralBackground4,
-      padding: '6px', // Reduced from 8px
+      padding: '10px', // Increased padding
       borderRadius: '4px',
       overflowX: 'auto',
+      whiteSpace: 'pre', // Preserve all whitespace in code blocks
+      margin: '8px 0', // Add vertical margin
     },
     '& code': {
       backgroundColor: tokens.colorNeutralBackground4,
-      padding: '1px 3px', // Reduced from 2px 4px
+      padding: '1px 3px',
       borderRadius: '3px',
       fontFamily: 'monospace',
+      whiteSpace: 'pre', // Preserve whitespace in inline code
     },
     '& a': {
       color: tokens.colorBrandForeground1,
@@ -151,46 +511,55 @@ const useStyles = makeStyles({
     },
     '& img': {
       maxWidth: '100%',
+      margin: '8px 0', // Add vertical margin
     },
     '& table': {
       borderCollapse: 'collapse',
       width: '100%',
-      margin: '6px 0', // Reduced from 10px
+      margin: '10px 0', // Increased margin
     },
     '& th, & td': {
       border: `1px solid ${tokens.colorNeutralStroke1}`,
-      padding: '6px', // Reduced from 8px
+      padding: '8px', // Increased padding
       textAlign: 'left',
     },
     '& blockquote': {
       borderLeft: `4px solid ${tokens.colorBrandStroke1}`,
-      margin: '0',
-      paddingLeft: '8px', // Reduced from 10px
+      margin: '10px 0', // Added vertical margin
+      paddingLeft: '12px', // Increased padding
       color: tokens.colorNeutralForeground2,
     },
-    // Add proper styling for lists
+    // Improved styling for lists
     '& ul, & ol': {
-      paddingLeft: '16px',  // Reduced from 20px
-      marginTop: '2px', // Reduced from 4px
-      marginBottom: '2px', // Reduced from 4px
+      paddingLeft: '24px', // Increased from 16px
+      marginTop: '8px', // Increased from 2px
+      marginBottom: '8px', // Increased from 2px
       boxSizing: 'border-box',
       width: '100%',
     },
     '& li': {
-      marginBottom: '2px', // Reduced from 4px
+      marginBottom: '6px', // Increased from 2px for better list item spacing
+      paddingLeft: '4px', // Add left padding for list items
       // Ensure text wraps properly
       overflowWrap: 'break-word',
       wordWrap: 'break-word',
       wordBreak: 'break-word',
     },
+    '& li:last-child': {
+      marginBottom: '2px', // Less margin on last item
+    },
     // Ensure all content wraps properly
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
     width: '100%',
+    // Add spacing between block elements
+    '& > *:not(:last-child)': {
+      marginBottom: '8px',
+    },
   },
   timestampTooltip: {
     position: 'absolute',
-    bottom: '-24px', // Moved further down to fully clear the bubble
+    bottom: '-24px',
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
     opacity: 0,
@@ -218,21 +587,21 @@ const useStyles = makeStyles({
     zIndex: 10,
     whiteSpace: 'nowrap',
     boxShadow: `0 2px 4px rgba(0, 0, 0, 0.1)`,
-    top: '50%', // Center vertically
-    transform: 'translateY(-50%)', // Center vertically
+    top: '50%',
+    transform: 'translateY(-50%)',
   },
   senderLabelUser: {
-    left: '-40px', // Position to the left of user messages
+    left: '-40px',
   },
   senderLabelAi: {
-    right: '-30px', // Position to the right of AI messages
+    right: '-30px',
   },
   messageContainerWithHover: {
     '&:hover .timestampTooltip, &:hover .senderLabel': {
       opacity: 1,
     },
-    marginBottom: '8px', // Reduced from 12px
-    marginTop: '4px', // Reduced from 5px
+    marginBottom: '8px',
+    marginTop: '4px',
   },
   // New styles for left-positioned error display
   messageWithErrorContainer: {
@@ -256,7 +625,7 @@ const useStyles = makeStyles({
     backgroundColor: 'transparent',
     padding: '4px 8px',
     fontSize: '12px',
-    maxWidth: '300px', // Changed from 150px to 300px for more error text space
+    maxWidth: '300px',
   },
   errorIndicatorLeftAi: {
     justifyContent: 'flex-start',
@@ -274,7 +643,7 @@ const useStyles = makeStyles({
   },
   tokenTextUser: {
     fontSize: '11px',
-    color: tokens.colorNeutralForegroundOnBrand, // Use the same color as user message text
+    color: tokens.colorNeutralForegroundOnBrand,
   },
   tokenIcon: {
     fontSize: '10px',
@@ -282,14 +651,7 @@ const useStyles = makeStyles({
   },
   tokenIconUser: {
     fontSize: '10px',
-    color: tokens.colorNeutralForegroundOnBrand, // Use the same color as user message text
-  },
-  tokenBadge: {
-    backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
-    fontSize: '10px',
-    height: '16px',
-    padding: '2px 6px',
   },
   tokenTooltipContent: {
     padding: '6px',
@@ -380,6 +742,49 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
   // Track whether we're waiting for an AI response
   const [isWaitingForAIResponse, setIsWaitingForAIResponse] = useState(false);
   const userInteractedRef = useRef(false);
+  const lastMessageSenderRef = useRef(null);
+  const isUserSendingRef = useRef(false);
+  const isAIRespondingRef = useRef(false);
+
+  // Track message state changes
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    const isUserMessage = lastMessage.sender === 'user';
+    const isAILoading = lastMessage.sender === 'ai' && lastMessage.isLoading;
+    const isAIResponse = lastMessage.sender === 'ai' && !lastMessage.isLoading;
+    
+    // Detect when a user sends a message
+    if (isUserMessage && lastMessageSenderRef.current !== 'user') {
+      isUserSendingRef.current = true;
+      setTimeout(() => {
+        isUserSendingRef.current = false;
+      }, 500); // Reset after a delay
+    }
+    
+    // Detect when AI starts responding (loading message appears)
+    if (isAILoading) {
+      setIsWaitingForAIResponse(true);
+      isAIRespondingRef.current = true;
+    }
+    
+    // Detect when AI response is complete
+    if (isAIResponse && isAIRespondingRef.current) {
+      setIsWaitingForAIResponse(false);
+      isAIRespondingRef.current = false;
+      
+      // Force scroll when AI finishes responding, unless user interacted
+      if (!userInteractedRef.current) {
+        setTimeout(() => {
+          scrollToBottom({ force: true, smooth: true });
+        }, 100);
+      }
+    }
+    
+    // Update last message sender reference
+    lastMessageSenderRef.current = lastMessage.sender;
+  }, [messages]);
 
   // More intelligent auto-scroll mechanism to prevent flashing
   const scrollToBottom = useCallback((options = {}) => {
@@ -476,7 +881,7 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     }
 
     const message = messages[index];
-    if (!message) return 80; // Reduced default height from 100
+    if (!message) return 80;
 
     // More accurate height calculation
     const baseHeight = 60; 
@@ -487,18 +892,21 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     const hasVoice = message.voice ? 100 : 0;
     const hasError = message.hasError ? 60 : 0;
     
-    // Fixed margins for consistent spacing - critical for preventing large gaps
-    const padding = 20; // Reduced to prevent extra space
+    // Add extra spacing buffer to prevent overlap
+    const spacingBuffer = 30;
     
     // Handle scrolling boundary cases by examining adjacent messages
     const isPreviousAI = index > 0 && messages[index - 1]?.sender === 'ai';
+    const isNextAI = index < messages.length - 1 && messages[index + 1]?.sender === 'ai';
     const isUser = message.sender === 'user';
     
-    // Add padding adjustment for when a user message follows an AI message
-    const boundaryAdjustment = (isUser && isPreviousAI) ? -10 : 0;
+    // Special boundary adjustments to prevent overlapping bubbles
+    let boundaryAdjustment = 0;
+    if (isUser && isPreviousAI) boundaryAdjustment -= 5;
+    if (!isUser && index > 0 && messages[index - 1]?.sender === 'user') boundaryAdjustment += 5;
     
     // Calculate total height and cache it
-    const totalHeight = baseHeight + textHeight + hasImage + hasVoice + hasError + padding + boundaryAdjustment;
+    const totalHeight = baseHeight + textHeight + hasImage + hasVoice + hasError + spacingBuffer + boundaryAdjustment;
     sizeCache.current[index] = totalHeight;
     
     return totalHeight;
@@ -525,275 +933,29 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
       });
   };
   
-  // Helper function to categorize error types
-  const getErrorMessage = (errorMsg) => {
-    if (!errorMsg) return "An unknown error occurred";
-    
-    if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-      return "Network error: Unable to reach the server";
-    } else if (errorMsg.includes('429') || errorMsg.includes('rate limit') || errorMsg.includes('quota')) {
-      return "Rate limit exceeded: Try again later";
-    } else if (errorMsg.includes('content') || errorMsg.includes('policy')) {
-      return "Content policy violation: Message couldn't be processed";
-    } else {
-      return errorMsg;
-    }
-  };
-
-  // Format numbers with commas
-  const formatNumber = (num) => {
-    if (!num && num !== 0) return '0';
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
-  // Helper function to render token usage for a message
-  const renderTokenUsage = (message) => {
-    if (!message.tokenUsage) return null;
-    
-    return (
-      <div className={styles.tokenInfo}>
-        <Tooltip
-          content={
-            <div className={styles.tokenTooltipContent}>
-              <div className={styles.tokenStatsRow}>
-                <Text>Prompt Tokens:</Text>
-                <Text weight="semibold">{formatNumber(message.tokenUsage.promptTokens)}</Text>
-              </div>
-              <div className={styles.tokenStatsRow}>
-                <Text>Completion Tokens:</Text>
-                <Text weight="semibold">{formatNumber(message.tokenUsage.completionTokens)}</Text>
-              </div>
-              <div className={styles.tokenStatsRow}>
-                <Text>Total Tokens:</Text>
-                <Text weight="semibold">{formatNumber(message.tokenUsage.totalTokens)}</Text>
-              </div>
-            </div>
-          }
-          relationship="label"
-          positioning="above"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <DataUsageRegular className={styles.tokenIcon} />
-            <Text className={styles.tokenText}>
-              {formatNumber(message.tokenUsage.completionTokens)} tokens
-            </Text>
-          </div>
-        </Tooltip>
-      </div>
-    );
-  };
-
-  // Helper function to render prompt tokens for user messages
-  const renderPromptTokens = (message) => {
-    if (!message.promptTokens) return null;
-    
-    return (
-      <div className={styles.tokenInfo}>
-        <Tooltip
-          content={
-            <div className={styles.tokenTooltipContent}>
-              <div className={styles.tokenStatsRow}>
-                <Text>Prompt Tokens:</Text>
-                <Text weight="semibold">{formatNumber(message.promptTokens)}</Text>
-              </div>
-            </div>
-          }
-          relationship="label"
-          positioning="above"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <DataUsageRegular className={styles.tokenIconUser} />
-            <Text className={styles.tokenTextUser}>
-              {formatNumber(message.promptTokens)} tokens
-            </Text>
-          </div>
-        </Tooltip>
-      </div>
-    );
-  };
-
   // Custom row renderer for virtualized list
   const MessageRow = ({ index, style }) => {
     const message = messages[index];
-    const isError = message.hasError && !retryingIds.has(message.id);
-    const isUser = message.sender === 'user';
     const isLastMessage = index === messages.length - 1;
+    const isRetrying = retryingIds.has(message.id);
     
     // Apply consistent spacing - modify style to ensure consistent gaps
+    // Important: top position must be respected but height needs extra space to prevent overlap
     const modifiedStyle = {
       ...style,
-      // Add extra padding to the bottom of the last message to ensure it's not cut off
+      height: style.height + 25, // Add extra height buffer to prevent overlap
       paddingBottom: isLastMessage ? '20px' : '0',
-      // Apply fixed margin for consistent spacing regardless of message position
-      marginTop: '4px',
-      marginBottom: '6px',
+      paddingTop: '10px', // Ensure consistent top padding
     };
 
-    // For messages with errors, use a different container structure
-    if (isError) {
-      return (
-        <div 
-          style={{
-            ...modifiedStyle,
-            display: 'flex',
-            justifyContent: isUser ? 'flex-end' : 'flex-start',
-          }}
-        >
-          <div className={`
-            ${styles.messageWithErrorContainer} 
-            ${!isUser ? styles.messageWithErrorContainerAi : ''}
-          `}>
-            {/* Error indicator positioned to the left */}
-            <div className={`
-              ${styles.errorIndicatorLeft} 
-              ${!isUser ? styles.errorIndicatorLeftAi : ''}
-            `}>
-              <ErrorCircleRegular />
-              <Text className={styles.errorMessage}>
-                {getErrorMessage(message.error)}
-              </Text>
-              <Button 
-                icon={<ArrowResetRegular />}
-                appearance="subtle"
-                size="small"
-                onClick={(e) => onRetryMessage(
-                  e,
-                  message.id, 
-                  message.originalInput,
-                  message.originalImage,
-                  message.originalVoice
-                )}
-              >
-                Retry
-              </Button>
-            </div>
-
-            {/* Message bubble */}
-            <div
-              className={`
-                ${styles.messageContainer} 
-                ${isUser ? styles.userMessage : styles.aiMessage}
-                ${styles.messageContainerWithHover}
-              `}
-            >
-              <div className={styles.messageContent}>
-                {message.text && (
-                  <div className={styles.markdown}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.text}
-                    </ReactMarkdown>
-                  </div>
-                )}
-                {message.image && (
-                  <img 
-                    src={message.image} 
-                    alt="Attached" 
-                    className={styles.messageImage}
-                  />
-                )}
-                {message.voice && (
-                  <AudioPlayer 
-                    src={message.voice} 
-                    className={styles.messageAudio} 
-                  />
-                )}
-              </div>
-              <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
-                {new Date(message.timestamp).toLocaleTimeString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // For regular messages without errors, use the standard layout
     return (
-      <div
-        style={{
-          ...modifiedStyle,
-          display: 'flex',
-          justifyContent: isUser ? 'flex-end' : 'flex-start',
-          paddingRight: isUser ? '10px' : '0', // Reduced from 20px
-          paddingLeft: isUser ? '0' : '10px' // Reduced from 20px
-        }}
-      >
-        <div
-          className={`
-            ${styles.messageContainer} 
-            ${isUser ? styles.userMessage : styles.aiMessage}
-            ${styles.messageContainerWithHover}
-          `}
-        >
-          {/* Add sender label that appears on hover */}
-          <div className={`
-            ${styles.senderLabel} 
-            ${isUser ? styles.senderLabelUser : styles.senderLabelAi}
-            senderLabel
-          `}>
-            {isUser ? 'YOU' : 'AI'}
-          </div>
-          {message.isLoading ? (
-            <div className={styles.messageContent}>
-              <Spinner size="tiny" label="AI is thinking..." />
-            </div>
-          ) : message.isRetrying || retryingIds.has(message.id) ? (
-            <div className={styles.messageContent}>
-              {message.text && (
-                <div className={styles.markdown}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.text}
-                  </ReactMarkdown>
-                </div>
-              )}
-              {message.image && (
-                <img 
-                  src={message.image} 
-                  alt="Attached" 
-                  className={styles.messageImage}
-                />
-              )}
-              {message.voice && (
-                <AudioPlayer 
-                  src={message.voice} 
-                  className={styles.messageAudio} 
-                />
-              )}
-              <div className={styles.retryingIndicator}>
-                <Spinner size="tiny" />
-                <Text>Retrying message...</Text>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.messageContent}>
-              {message.text && (
-                <div className={styles.markdown}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.text}
-                  </ReactMarkdown>
-                </div>
-              )}
-              {message.image && (
-                <img 
-                  src={message.image} 
-                  alt="Attached" 
-                  className={styles.messageImage}
-                />
-              )}
-              {message.voice && (
-                <AudioPlayer 
-                  src={message.voice} 
-                  className={styles.messageAudio} 
-                />
-              )}
-              {!isUser && message.tokenUsage && renderTokenUsage(message)}
-              {isUser && message.promptTokens && renderPromptTokens(message)}
-            </div>
-          )}
-          <div className={`${styles.timestampTooltip} ${isUser ? styles.timestampTooltipUser : styles.timestampTooltipAi} timestampTooltip`}>
-            {new Date(message.timestamp).toLocaleTimeString()}
-          </div>
-        </div>
+      <div style={modifiedStyle}>
+        <ChatMessage 
+          message={message} 
+          isRetrying={isRetrying} 
+          onRetry={onRetryMessage} 
+          isLastMessage={isLastMessage} 
+        />
       </div>
     );
   };
@@ -898,6 +1060,30 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
     };
   }, [isWaitingForAIResponse]);
 
+  // Listen for user input activity to improve scroll behavior
+  useEffect(() => {
+    const handleUserInputActivity = (event) => {
+      if (event.detail?.isActive) {
+        // Reset user interaction when user is actively typing
+        userInteractedRef.current = false;
+        
+        // Auto-scroll to the bottom when user is typing
+        if (!isUserSendingRef.current) {
+          requestAnimationFrame(() => {
+            scrollToBottom({ smooth: true });
+          });
+        }
+      }
+    };
+    
+    // Listen for the custom event from MessageInput
+    window.addEventListener('user-input-activity', handleUserInputActivity);
+    
+    return () => {
+      window.removeEventListener('user-input-activity', handleUserInputActivity);
+    };
+  }, [scrollToBottom]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatContainer}>
@@ -906,30 +1092,16 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
         ) : messages.length === 0 ? (
           <EmptyMessage />
         ) : (
-          <>
-            <AutoSizer>
-              {({ height, width }) => (
-                <List
-                  ref={listRef}
-                  height={height}
-                  width={width}
-                  itemCount={messages.length}
-                  itemSize={getMessageHeight}
-                  overscanCount={20}
-                  initialScrollOffset={999999}
-                  itemData={messages}
-                  style={{ 
-                    paddingBottom: "70px", // Increased padding for better bottom visibility
-                    boxSizing: "border-box"
-                  }}
-                  useIsScrolling={false}
-                  direction="vertical"
-                >
-                  {MessageRow}
-                </List>
-              )}
-            </AutoSizer>
-            
+          <div className={styles.messagesContainer}>
+            {messages.map((message, index) => (
+              <ChatMessage 
+                key={message.id || index} 
+                message={message} 
+                isRetrying={retryingIds.has(message.id)} 
+                onRetry={onRetryMessage} 
+                isLastMessage={index === messages.length - 1} 
+              />
+            ))}
             {/* This blank div is always placed at the end for smooth scrolling */}
             <div 
               ref={messagesEndRef} 
@@ -940,7 +1112,7 @@ export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => 
                 float: 'left' 
               }} 
             />
-          </>
+          </div>
         )}
         
         {error && <ErrorDisplay message={error} type="error" onDismiss={() => setError('')} />}

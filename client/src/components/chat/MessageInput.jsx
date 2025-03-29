@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Button,
   Input,
@@ -11,6 +11,7 @@ import {
   ImageRegular,
   MicRegular,
 } from '@fluentui/react-icons';
+import { useChat } from '../../contexts/ChatContext';
 
 const useStyles = makeStyles({
   inputContainer: {
@@ -58,13 +59,56 @@ export const MessageInput = ({
   selectedVoice,
   setSelectedVoice,
   isConfigured,
-  setError
+  setError,
+  isLoading
 }) => {
   const styles = useStyles();
   const fileInputRef = useRef(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const audioChunksRef = useRef([]);
+  const [isSending, setIsSending] = useState(false);
+  
+  // Create a wrapped send handler that tracks sending state
+  const handleSendWithTracking = () => {
+    if (!input.trim() && !selectedImage && !selectedVoice) return;
+    if (isLoading) return;
+    
+    // Set sending state to true briefly
+    setIsSending(true);
+    
+    // Call the actual send handler
+    handleSend();
+    
+    // Reset sending state after a short delay
+    setTimeout(() => {
+      setIsSending(false);
+    }, 300);
+  };
+
+  // Effect to notify when the input component is active
+  useEffect(() => {
+    // Create a custom event for when user starts typing
+    const notifyInputActivity = () => {
+      window.dispatchEvent(new CustomEvent('user-input-activity', {
+        detail: { isActive: true }
+      }));
+    };
+    
+    // Add listeners to detect user input activity
+    const inputElement = document.querySelector(`.${styles.input} input`);
+    if (inputElement) {
+      inputElement.addEventListener('focus', notifyInputActivity);
+      inputElement.addEventListener('keydown', notifyInputActivity);
+    }
+    
+    return () => {
+      if (inputElement) {
+        inputElement.removeEventListener('focus', notifyInputActivity);
+        inputElement.removeEventListener('keydown', notifyInputActivity);
+      }
+    };
+  }, [styles.input]);
 
   const handleImageSelect = (event) => {
     const file = event.target.files[0];
@@ -149,7 +193,7 @@ export const MessageInput = ({
         placeholder="Type your message..."
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+        onKeyPress={(e) => e.key === 'Enter' && handleSendWithTracking()}
         disabled={!isConfigured}
       />
       <input
@@ -178,8 +222,8 @@ export const MessageInput = ({
       <Button
         appearance="primary"
         icon={<SendRegular />}
-        onClick={handleSend}
-        disabled={!isConfigured}
+        onClick={handleSendWithTracking}
+        disabled={!isConfigured || isSending}
       >
         Send
       </Button>
