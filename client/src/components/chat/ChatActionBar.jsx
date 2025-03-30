@@ -4,9 +4,24 @@ import {
   shorthands,
   tokens,
   Button,
-  Tooltip
+  Tooltip,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
+  MenuDivider
 } from '@fluentui/react-components';
-import { DeleteRegular, TextBulletListSquareRegular } from '@fluentui/react-icons';
+import { 
+  DeleteRegular, 
+  TextBulletListSquareRegular, 
+  ArrowDownloadRegular,
+  DocumentPdfRegular,
+  DocumentRegular,
+  CodeRegular
+} from '@fluentui/react-icons';
+import { useChat } from '../../contexts/ChatContext';
+import { exportChat } from '../../utils/Utils';
 
 const useStyles = makeStyles({
   actionBar: {
@@ -18,6 +33,9 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.gap('12px'),
     flexShrink: 0,
+  },
+  exportMenuIcon: {
+    marginRight: '8px',
   }
 });
 
@@ -31,6 +49,11 @@ const useStyles = makeStyles({
  */
 export const ChatActionBar = ({ onClearChat, onSummarizeChat, isConfigured = true }) => {
   const styles = useStyles();
+  const { messages } = useChat();
+  
+  const handleExport = (format) => {
+    exportChat(messages, format);
+  };
 
   return (
     <div className={styles.actionBar}>
@@ -48,6 +71,49 @@ export const ChatActionBar = ({ onClearChat, onSummarizeChat, isConfigured = tru
           Summarize
         </Button>
       </Tooltip>
+      
+      <Menu>
+        <MenuTrigger disableButtonEnhancement>
+          <Tooltip
+            content="Export the conversation"
+            relationship="label"
+            positioning="above"
+          >
+            <Button
+              icon={<ArrowDownloadRegular />}
+              appearance="subtle"
+              disabled={!isConfigured || messages.length === 0}
+            >
+              Export
+            </Button>
+          </Tooltip>
+        </MenuTrigger>
+        
+        <MenuPopover>
+          <MenuList>
+            <MenuItem 
+              icon={<DocumentRegular className={styles.exportMenuIcon} />}
+              onClick={() => handleExport('txt')}
+            >
+              Text (.txt)
+            </MenuItem>
+            <MenuItem 
+              icon={<CodeRegular className={styles.exportMenuIcon} />}
+              onClick={() => handleExport('md')}
+            >
+              Markdown (.md)
+            </MenuItem>
+            <MenuDivider />
+            <MenuItem 
+              icon={<DocumentPdfRegular className={styles.exportMenuIcon} />}
+              onClick={() => handleExport('pdf')}
+            >
+              PDF Document
+            </MenuItem>
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+      
       <Tooltip
         content="Clear all messages"
         relationship="label"

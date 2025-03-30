@@ -85,3 +85,206 @@ export const getMemoryModeDisplay = (memorySettings) => {
 export const generateId = () => {
   return Date.now() + Math.floor(Math.random() * 1000);
 };
+
+/**
+ * Export chat messages to plain text format
+ * @param {Array} messages - The array of chat messages
+ * @returns {string} Plain text representation of the chat
+ */
+export const exportChatToText = (messages) => {
+  if (!messages || messages.length === 0) return '';
+  
+  return messages.map(msg => {
+    const sender = msg.sender === 'user' ? 'You' : 'AI';
+    const time = formatTimestamp(msg.timestamp);
+    return `[${time}] ${sender}: ${msg.text}`;
+  }).join('\n\n');
+};
+
+/**
+ * Export chat messages to Markdown format
+ * @param {Array} messages - The array of chat messages
+ * @returns {string} Markdown representation of the chat
+ */
+export const exportChatToMarkdown = (messages) => {
+  if (!messages || messages.length === 0) return '';
+  
+  const title = '# Chat Conversation\n\n';
+  const date = `*Exported on ${new Date().toLocaleString()}*\n\n`;
+  
+  const content = messages.map(msg => {
+    const sender = msg.sender === 'user' ? '**You**' : '**AI**';
+    const time = formatTimestamp(msg.timestamp);
+    
+    // If the message is a summary, add special formatting
+    if (msg.isSummary) {
+      return `### Summary (${time})\n\n${msg.text}\n`;
+    }
+    
+    return `### ${sender} (${time})\n\n${msg.text}\n`;
+  }).join('\n');
+  
+  return title + date + content;
+};
+
+/**
+ * Download content as a file
+ * @param {string} content - The content to download
+ * @param {string} filename - The filename to use
+ * @param {string} contentType - The content type of the file
+ */
+export const downloadFile = (content, filename, contentType) => {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Export chat as PDF using jsPDF library
+ * @param {Array} messages - The array of chat messages
+ * @param {string} title - Title for the PDF document
+ * @returns {void}
+ */
+export const exportChatToPDF = (messages, title = 'Chat Conversation') => {
+  // Import jsPDF dynamically to avoid build issues
+  import('jspdf').then(({ default: jsPDF }) => {
+    const doc = new jsPDF();
+    
+    // Set document title and metadata
+    doc.setProperties({
+      title: title,
+      subject: 'Chat Export',
+      creator: 'AI Chat App',
+      author: 'User',
+      creationDate: new Date()
+    });
+    
+    // Define formatting variables
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const contentWidth = pageWidth - (margin * 2);
+    let y = margin;
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text(title, margin, y);
+    
+    // Add export date
+    y += 10;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Exported on ${new Date().toLocaleString()}`, margin, y);
+    
+    // Reset text settings for messages
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    
+    // Process each message
+    messages.forEach((msg, index) => {
+      const sender = msg.sender === 'user' ? 'You' : 'AI';
+      const time = formatTimestamp(msg.timestamp);
+      const header = `${sender} (${time})`;
+      
+      // Add spacing between messages
+      y += 10;
+      
+      // Set color based on sender (user or AI)
+      if (msg.sender === 'user') {
+        doc.setTextColor(0, 120, 212); // Blue for user
+      } else if (msg.isSummary) {
+        doc.setTextColor(255, 136, 0); // Orange for summary
+      } else {
+        doc.setTextColor(0, 0, 0); // Black for AI
+      }
+      
+      // Add message header (sender and time)
+      // Use the correct method for setting font style in jsPDF 3.x
+      doc.setFont(undefined, 'bold');
+      doc.text(header, margin, y);
+      doc.setFont(undefined, 'normal');
+      
+      // Add message content with text wrapping
+      y += 6;
+      
+      // Handle null or undefined text
+      const messageText = msg.text || '';
+      
+      // Process and wrap the message text
+      const textLines = doc.splitTextToSize(messageText, contentWidth);
+      
+      // Check if we need a new page
+      if (y + (textLines.length * 6) > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin + 6;
+      }
+      
+      doc.text(textLines, margin, y);
+      
+      // Move y position for next message
+      y += (textLines.length * 6);
+      
+      // Add horizontal line between messages (except last)
+      if (index < messages.length - 1) {
+        y += 4;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 4;
+      }
+      
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+      
+      // Check if we need a new page for the next message
+      if (y > doc.internal.pageSize.getHeight() - 30) {
+        doc.addPage();
+        y = margin;
+      }
+    });
+    
+    // Save the PDF
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    doc.save(`${title}-${timestamp}.pdf`);
+  }).catch(error => {
+    console.error('Error generating PDF:', error);
+    // Log more details about the error to help with debugging
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
+    }
+    alert('Failed to generate PDF. Please try another format.');
+  });
+};
+
+/**
+ * Export chat as a specific file format
+ * @param {Array} messages - The array of chat messages
+ * @param {string} format - The export format ('txt', 'md', 'pdf')
+ * @param {string} title - Optional title for the export
+ */
+export const exportChat = (messages, format, title = 'Chat Conversation') => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  
+  switch(format) {
+    case 'txt': {
+      const textContent = exportChatToText(messages);
+      downloadFile(textContent, `${title}-${timestamp}.txt`, 'text/plain');
+      break;
+    }
+    case 'md': {
+      const mdContent = exportChatToMarkdown(messages);
+      downloadFile(mdContent, `${title}-${timestamp}.md`, 'text/markdown');
+      break;
+    }
+    case 'pdf': {
+      exportChatToPDF(messages, title);
+      break;
+    }
+    default:
+      console.error('Unsupported export format:', format);
+  }
+};

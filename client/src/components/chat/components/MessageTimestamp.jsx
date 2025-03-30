@@ -1,5 +1,5 @@
 import React from 'react';
-import { makeStyles } from '@fluentui/react-components';
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { formatTimestamp } from '../../../utils/Utils';
 
 const useStyles = makeStyles({
@@ -7,7 +7,7 @@ const useStyles = makeStyles({
     position: 'absolute',
     bottom: '-23px',
     fontSize: '11px',
-    color: 'rgba(0, 0, 0, 0.6)',
+    color: tokens.colorNeutralForeground3,
     opacity: 0,
     transition: 'opacity 0.2s ease',
     pointerEvents: 'none',

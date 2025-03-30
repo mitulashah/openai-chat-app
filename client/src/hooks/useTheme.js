@@ -13,8 +13,6 @@ export const useTheme = () => {
 
   // Initialize state with a lazy initializer function to avoid repeated calls to getSystemPreference
   const [currentThemeName, setCurrentThemeName] = useState(() => getSystemPreference());
-  // Add a transition state to track when theme is changing
-  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Derive currentTheme from currentThemeName using useMemo
   const currentTheme = useMemo(() => themes[currentThemeName] || themes.light, [currentThemeName]);
@@ -41,17 +39,9 @@ export const useTheme = () => {
     const newThemeName = data.value;
     if (newThemeName === currentThemeName) return;
     
-    // Set transitioning state
-    setIsTransitioning(true);
-    
     // Set the theme
     setCurrentThemeName(newThemeName);
     saveTheme(newThemeName);
-    
-    // Reset transitioning state after animation completes
-    setTimeout(() => {
-      setIsTransitioning(false);
-    }, 350); // Slightly longer than our CSS transition
   }, [currentThemeName]);
 
   useEffect(() => {
@@ -79,7 +69,6 @@ export const useTheme = () => {
   return {
     currentTheme,
     currentThemeName,
-    handleThemeChange,
-    isTransitioning
+    handleThemeChange
   };
 };

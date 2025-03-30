@@ -1,5 +1,6 @@
-import React from 'react';
-import { makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import React, { useState } from 'react';
+import { makeStyles, shorthands, tokens, Button, Tooltip } from '@fluentui/react-components';
+import { CopyRegular, CheckmarkRegular } from '@fluentui/react-icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -45,7 +46,8 @@ const useStyles = makeStyles({
       whiteSpace: 'pre',
       margin: '8px 0',
       color: '#f8f8f2', // Dracula foreground color
-      fontSize: '0.9rem', // Slightly smaller font size for code blocks
+      fontSize: '0.75rem', // Changed from 0.8rem to 0.75rem for code blocks
+      position: 'relative', // For positioning the copy button
     },
     '& code': {
       backgroundColor: '#2d3250', // Same as pre for consistency
@@ -54,7 +56,7 @@ const useStyles = makeStyles({
       fontFamily: 'monospace',
       whiteSpace: 'pre',
       color: '#f8f8f2', // Same as pre for consistency
-      fontSize: '0.9rem', // Slightly smaller font size for inline code
+      fontSize: '0.75rem', // Changed from 0.8rem to 0.75rem for inline code
     },
     '& pre code': {
       backgroundColor: 'transparent', // Remove background for code inside pre blocks
@@ -112,29 +114,107 @@ const useStyles = makeStyles({
       marginBottom: '8px',
     },
   },
+  codeBlockWrapper: {
+    position: 'relative',
+  },
+  copyButton: {
+    position: 'absolute',
+    top: '5px',
+    right: '5px',
+    minWidth: 'unset',
+    width: '28px',
+    height: '28px',
+    padding: '2px',
+    zIndex: 1,
+    opacity: 0,
+    transition: 'opacity 0.2s ease',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    color: tokens.colorNeutralForeground3,
+    borderRadius: '4px',
+    '&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+      color: tokens.colorNeutralForegroundOnBrand,
+    },
+  },
+  codeBlockContainer: {
+    position: 'relative',
+    '&:hover': {
+      '& > button': {
+        opacity: 1,
+      }
+    }
+  },
+  markdownBlock: {
+    position: 'relative',
+  },
 });
+
+// Copy Button Component
+const CopyButton = ({ text }) => {
+  const styles = useStyles();
+  const [isCopied, setIsCopied] = useState(false);
+  
+  const handleCopy = async () => {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+  
+  return (
+    <Tooltip
+      content={isCopied ? "Copied!" : "Copy to clipboard"}
+      relationship="label"
+    >
+      <Button 
+        className={styles.copyButton}
+        appearance="subtle"
+        icon={isCopied ? <CheckmarkRegular /> : <CopyRegular />}
+        onClick={handleCopy}
+        aria-label="Copy to clipboard"
+      />
+    </Tooltip>
+  );
+};
+
+// Code Block Wrapper
+const CodeBlockWrapper = ({ children, content }) => {
+  const styles = useStyles();
+  
+  return (
+    <div className={`${styles.codeBlockWrapper} ${styles.codeBlockContainer}`}>
+      {children}
+      <CopyButton text={content} />
+    </div>
+  );
+};
 
 // Common markdown rendering configuration
 const markdownComponents = {
   code: ({node, inline, className, children, ...props}) => {
     const match = /language-(\w+)/.exec(className || '');
     const language = match ? match[1] : '';
+    const content = String(children).replace(/\n$/, '');
     
     return !inline ? (
-      <SyntaxHighlighter
-        style={dracula}
-        language={language || 'text'}
-        PreTag="div"
-        customStyle={{
-          margin: '8px 0',
-          borderRadius: '4px',
-          backgroundColor: '#2d3250', // Keep consistent with our custom background
-          fontSize: '0.9rem', // Matching the smaller font size
-        }}
-        {...props}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
+      <CodeBlockWrapper content={content}>
+        <SyntaxHighlighter
+          style={dracula}
+          language={language || 'text'}
+          PreTag="div"
+          customStyle={{
+            margin: '8px 0',
+            borderRadius: '4px',
+            backgroundColor: '#2d3250', // Keep consistent with our custom background
+            fontSize: '0.75rem', // Updated from 0.8rem to 0.75rem to match the CSS
+            paddingRight: '35px', // Make room for the copy button
+          }}
+          {...props}
+        >
+          {content}
+        </SyntaxHighlighter>
+      </CodeBlockWrapper>
     ) : (
       <code className={className} {...props}>
         {children}

@@ -29,22 +29,17 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    position: 'relative',
   },
-  // New theme transition overlay
-  themeTransitionOverlay: {
+  dimOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    pointerEvents: 'none',
-    zIndex: 9999,
-    opacity: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    transition: 'opacity 300ms ease',
-  },
-  themeTransitioning: {
-    opacity: 0.15,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 1,
+    pointerEvents: 'none', // Allow clicks to pass through
   }
 });
 
@@ -58,7 +53,7 @@ const APP_CONFIG = {
  * Main App component that provides the theme and chat context
  */
 function App() {
-  const { currentTheme, currentThemeName, handleThemeChange, isTransitioning } = useTheme();
+  const { currentTheme, currentThemeName, handleThemeChange } = useTheme();
   
   return (
     <FluentProvider theme={currentTheme}>
@@ -67,7 +62,6 @@ function App() {
           currentTheme={currentTheme}
           currentThemeName={currentThemeName}
           handleThemeChange={handleThemeChange}
-          isTransitioning={isTransitioning}
         />
       </ChatProvider>
     </FluentProvider>
@@ -75,7 +69,7 @@ function App() {
 }
 
 // Main content component that uses the chat context
-const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange, isTransitioning }) => {
+const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
   const styles = useStyles();
   const { 
     messages, 
@@ -100,11 +94,11 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange, isTran
     isInitializing
   } = useChat();
 
+  // Check if we should show any error/warning message
+  const showWarningOrError = (!isConfigured && !configLoading) || error;
+
   return (
     <div className={styles.root}>
-      {/* Theme transition overlay */}
-      <div className={`${styles.themeTransitionOverlay} ${isTransitioning ? styles.themeTransitioning : ''}`} />
-      
       <ChatHeader 
         onClearChat={handleClearChat} 
         onOpenSettings={() => setIsAdminPanelOpen(true)}
@@ -141,6 +135,9 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange, isTran
           setError={setError}
           isLoading={isLoading}
         />
+        
+        {/* Add dimming overlay when there's a warning or error message */}
+        {showWarningOrError && <div className={styles.dimOverlay} />}
       </div>
       
       <Footer 
@@ -150,13 +147,19 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange, isTran
         handleThemeChange={handleThemeChange}
         memorySettings={memorySettings}
         tokenUsage={tokenUsage}
-        isTransitioning={isTransitioning}
       />
       
       <AdminPanel 
         open={isAdminPanelOpen} 
-        onOpenChange={setIsAdminPanelOpen}
-        onConfigSaved={() => refreshConfiguration()}
+        onOpenChange={(e, data) => {
+          // Handle both cases: when called from the Dialog (with e, data) and when called directly (with boolean)
+          if (typeof e === 'boolean') {
+            setIsAdminPanelOpen(e);
+          } else if (data && typeof data.open === 'boolean') {
+            setIsAdminPanelOpen(data.open);
+          }
+        }}
+        onConfigSaved={refreshConfiguration}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Text,
   makeStyles,
@@ -109,36 +109,6 @@ const useStyles = makeStyles({
   tooltipDivider: {
     margin: '6px 0',
   },
-  // New theme transition indicator styles
-  themeTransitionIndicator: {
-    position: 'absolute',
-    top: '-5px',
-    right: '-5px',
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    backgroundColor: tokens.colorBrandBackground,
-    opacity: 0,
-    transition: 'opacity 300ms ease, transform 300ms ease',
-    transform: 'scale(0)',
-  },
-  themeTransitioning: {
-    opacity: 1,
-    transform: 'scale(1)',
-    animation: {
-      '0%': {
-        transform: 'scale(0.8)',
-      },
-      '50%': {
-        transform: 'scale(1.2)',
-      },
-      '100%': {
-        transform: 'scale(0.8)',
-      }
-    },
-    animationDuration: '1s',
-    animationIterationCount: 'infinite',
-  },
   menuButton: {
     position: 'relative',
   }
@@ -157,7 +127,6 @@ const useStyles = makeStyles({
  * @param {Function} props.handleThemeChange - Function to change theme
  * @param {Object} props.memorySettings - Memory settings object
  * @param {Object} props.tokenUsage - Token usage statistics
- * @param {boolean} [props.isTransitioning] - Whether the theme is transitioning
  * @returns {JSX.Element}
  */
 export const Footer = ({ 
@@ -166,22 +135,9 @@ export const Footer = ({
   currentThemeName, 
   handleThemeChange,
   memorySettings,
-  tokenUsage,
-  isTransitioning
+  tokenUsage
 }) => {
   const styles = useStyles();
-  const [showTooltip, setShowTooltip] = useState(false);
-  
-  // Effect to show tooltip briefly when theme is changing
-  useEffect(() => {
-    if (isTransitioning) {
-      setShowTooltip(true);
-      const timer = setTimeout(() => {
-        setShowTooltip(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isTransitioning]);
   
   // Get background colors for both themes
   const lightBackground = themes?.light?.colorNeutralBackground1 || '#F8F8F2';
@@ -199,7 +155,7 @@ export const Footer = ({
       default: return 'Light Dracula';
     }
   };
-
+  
   // Ensure we have valid tokenUsage data
   const safeTokenUsage = tokenUsage || { 
     total: 0, 
@@ -278,73 +234,63 @@ export const Footer = ({
       <div className={styles.footerRight}>
         <div className={styles.themeSelector}>
           <Text size={200}>Theme:</Text>
-          <Tooltip
-            content="Theme is changing..."
-            relationship="label"
-            positioning="above"
-            visible={showTooltip}
-          >
-            <div className={styles.menuButton}>
-              <Menu>
-                <MenuTrigger>
-                  <MenuButton icon={<ColorRegular />}>
-                    {getThemeDisplayName()}
-                  </MenuButton>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem 
-                      onClick={(e) => handleThemeChange(e, { value: 'light' })}
-                    >
-                      <div className={styles.menuItemContent}>
-                        <div 
-                          className={styles.themePreview}
-                          style={{ backgroundColor: lightBackground }}
-                        />
-                        Light Dracula
-                      </div>
-                    </MenuItem>
-                    <MenuItem 
-                      onClick={(e) => handleThemeChange(e, { value: 'dark' })}
-                    >
-                      <div className={styles.menuItemContent}>
-                        <div 
-                          className={styles.themePreview}
-                          style={{ backgroundColor: darkBackground }}
-                        />
-                        Dark Dracula
-                      </div>
-                    </MenuItem>
-                    <MenuItem 
-                      onClick={(e) => handleThemeChange(e, { value: 'lightNord' })}
-                    >
-                      <div className={styles.menuItemContent}>
-                        <div 
-                          className={styles.themePreview}
-                          style={{ backgroundColor: lightNordBackground }}
-                        />
-                        Light Nord
-                      </div>
-                    </MenuItem>
-                    <MenuItem 
-                      onClick={(e) => handleThemeChange(e, { value: 'darkNord' })}
-                    >
-                      <div className={styles.menuItemContent}>
-                        <div 
-                          className={styles.themePreview}
-                          style={{ backgroundColor: darkNordBackground }}
-                        />
-                        Dark Nord
-                      </div>
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
-              <div 
-                className={`${styles.themeTransitionIndicator} ${isTransitioning ? styles.themeTransitioning : ''}`}
-              />
-            </div>
-          </Tooltip>
+          <div className={styles.menuButton}>
+            <Menu>
+              <MenuTrigger>
+                <MenuButton icon={<ColorRegular />}>
+                  {getThemeDisplayName()}
+                </MenuButton>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem 
+                    onClick={(e) => handleThemeChange(e, { value: 'light' })}
+                  >
+                    <div className={styles.menuItemContent}>
+                      <div 
+                        className={styles.themePreview}
+                        style={{ backgroundColor: lightBackground }}
+                      />
+                      Light Dracula
+                    </div>
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={(e) => handleThemeChange(e, { value: 'dark' })}
+                  >
+                    <div className={styles.menuItemContent}>
+                      <div 
+                        className={styles.themePreview}
+                        style={{ backgroundColor: darkBackground }}
+                      />
+                      Dark Dracula
+                    </div>
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={(e) => handleThemeChange(e, { value: 'lightNord' })}
+                  >
+                    <div className={styles.menuItemContent}>
+                      <div 
+                        className={styles.themePreview}
+                        style={{ backgroundColor: lightNordBackground }}
+                      />
+                      Light Nord
+                    </div>
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={(e) => handleThemeChange(e, { value: 'darkNord' })}
+                  >
+                    <div className={styles.menuItemContent}>
+                      <div 
+                        className={styles.themePreview}
+                        style={{ backgroundColor: darkNordBackground }}
+                      />
+                      Dark Nord
+                    </div>
+                  </MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
+          </div>
         </div>
       </div>
     </div>

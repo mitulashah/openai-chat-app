@@ -20,6 +20,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     flexGrow: 1,
     overflow: 'hidden',
+    position: 'relative',
   },
   chatContainer: {
     display: 'flex',
@@ -36,7 +37,7 @@ const useStyles = makeStyles({
     flexGrow: 1,
     ...shorthands.gap('16px'), // Consistent gap between all messages
     paddingBottom: '20px', // Extra padding at bottom for better visibility
-  },
+  }
 });
 
 export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => {
