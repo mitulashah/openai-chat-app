@@ -6,7 +6,7 @@ import {
   Button,
   Tooltip
 } from '@fluentui/react-components';
-import { DeleteRegular } from '@fluentui/react-icons';
+import { DeleteRegular, TextBulletListSquareRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   actionBar: {
@@ -25,15 +25,29 @@ const useStyles = makeStyles({
  * Chat action bar component for chat-specific actions like clearing, saving, etc.
  * @param {Object} props - Component props
  * @param {Function} props.onClearChat - Function to clear chat
+ * @param {Function} props.onSummarizeChat - Function to summarize chat
  * @param {boolean} props.isConfigured - Whether Azure OpenAI is configured
  * @returns {JSX.Element}
  */
-export const ChatActionBar = ({ onClearChat, isConfigured = true }) => {
+export const ChatActionBar = ({ onClearChat, onSummarizeChat, isConfigured = true }) => {
   const styles = useStyles();
 
   return (
     <div className={styles.actionBar}>
-      {/* Only the clear chat button is kept and positioned on the right side */}
+      <Tooltip
+        content="Get a summary of the conversation"
+        relationship="label"
+        positioning="above"
+      >
+        <Button 
+          icon={<TextBulletListSquareRegular />}
+          appearance="subtle"
+          onClick={onSummarizeChat}
+          disabled={!isConfigured}
+        >
+          Summarize
+        </Button>
+      </Tooltip>
       <Tooltip
         content="Clear all messages"
         relationship="label"

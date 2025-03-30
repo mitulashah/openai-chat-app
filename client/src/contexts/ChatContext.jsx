@@ -110,6 +110,12 @@ export const ChatProvider = ({ children }) => {
     tokenUsageState.resetCurrentTokenUsage();
   }, [messagesState.handleClearChat, tokenUsageState.resetCurrentTokenUsage]);
 
+  // Function to handle summarizing the chat - memoized to prevent unnecessary recreations
+  const handleSummarizeChat = useCallback(() => {
+    if (messagesState.isLoading || messagesState.messages.length === 0) return;
+    messagesState.handleSummarize();
+  }, [messagesState.isLoading, messagesState.messages.length, messagesState.handleSummarize]);
+
   // Combine all states and functions from our hooks using useMemo for performance
   const contextValue = useMemo(() => ({
     // From useMessages
@@ -144,7 +150,8 @@ export const ChatProvider = ({ children }) => {
     
     // Combined functions
     handleSend,
-    handleClearChat
+    handleClearChat,
+    handleSummarizeChat
   }), [
     messagesState.messages,
     messagesState.isLoading,
@@ -167,7 +174,8 @@ export const ChatProvider = ({ children }) => {
     memoryState.updateMemorySettings,
     tokenUsageState.tokenUsage,
     handleSend,
-    handleClearChat
+    handleClearChat,
+    handleSummarizeChat
   ]);
 
   return (

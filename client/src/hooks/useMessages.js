@@ -256,6 +256,64 @@ export const useMessages = ({ updateTokenUsage, preparePreviousMessages }) => {
   }, [isLoading, messages, preparePreviousMessages, updateTokenUsage]);
 
   /**
+   * Summarize the chat history
+   * Uses the LLM to generate a summary of the conversation in third person
+   */
+  const handleSummarize = useCallback(async () => {
+    if (isLoading || messages.length === 0) return;
+    setIsLoading(true);
+    
+    try {
+      // Add a temporary loading message
+      const tempLoadingId = Date.now();
+      setMessages(prev => [...prev, {
+        id: tempLoadingId,
+        text: '',
+        sender: 'ai',
+        isLoading: true,
+        timestamp: new Date().toISOString(),
+      }]);
+
+      // Get all previous messages for summarization
+      const chatHistory = preparePreviousMessages(messages);
+
+      // Request to summarize the conversation in third person
+      const promptText = "Please provide a summary of this conversation in third person.";
+      
+      // Use the existing sendMessage API but ensure only the message history is sent
+      const data = await sendMessage(promptText, null, null, chatHistory);
+      
+      // Update token usage statistics
+      if (data.tokenUsage && updateTokenUsage) {
+        updateTokenUsage(data.tokenUsage);
+      }
+      
+      // Replace the loading message with the summary message
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== tempLoadingId);
+        
+        // Add the AI summary
+        return [...filtered, {
+          id: Date.now(),
+          text: data.message,
+          sender: 'ai',
+          timestamp: data.timestamp,
+          tokenUsage: data.tokenUsage,
+          isSummary: true
+        }];
+      });
+    } catch (error) {
+      console.error('Error summarizing chat:', error);
+      setError(`Failed to summarize: ${error.message}`);
+      
+      // Remove the loading message
+      setMessages(prev => prev.filter(m => !m.isLoading));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, messages, preparePreviousMessages, updateTokenUsage]);
+
+  /**
    * Clear all messages
    */
   const handleClearChat = useCallback(() => {
@@ -272,6 +330,7 @@ export const useMessages = ({ updateTokenUsage, preparePreviousMessages }) => {
     setError,
     handleSend,
     handleRetry,
-    handleClearChat
+    handleClearChat,
+    handleSummarize
   };
 };

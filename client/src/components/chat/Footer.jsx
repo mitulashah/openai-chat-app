@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-components';
 import { DeleteRegular, DataUsageRegular, ColorRegular } from '@fluentui/react-icons';
 import { themes } from '../../theme';
+import { formatNumber, getMemoryModeDisplay } from '../../utils/Utils';
 
 const useStyles = makeStyles({
   footer: {
@@ -199,23 +200,6 @@ export const Footer = ({
     }
   };
 
-  // Function to get memory mode display name
-  const getMemoryModeDisplay = () => {
-    if (!memorySettings) return 'Limited Memory';
-    
-    switch(memorySettings.memoryMode) {
-      case 'none': return 'No Memory';
-      case 'limited': return `Limited (${memorySettings.memoryLimit} messages)`;
-      case 'full': return 'Full Memory';
-      default: return 'Limited Memory';
-    }
-  };
-
-  // Format large numbers with commas
-  const formatNumber = (num) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
   // Ensure we have valid tokenUsage data
   const safeTokenUsage = tokenUsage || { 
     total: 0, 
@@ -241,7 +225,7 @@ export const Footer = ({
                 <div className={styles.tokenTooltipContent}>
                   <div className={styles.tokenStatsRow}>
                     <Text className={styles.tokenStatsLabel}>Memory Mode:</Text>
-                    <Text className={styles.tokenStatsValue}>{getMemoryModeDisplay()}</Text>
+                    <Text className={styles.tokenStatsValue}>{getMemoryModeDisplay(memorySettings)}</Text>
                   </div>
                   
                   <Divider className={styles.tooltipDivider} />
@@ -284,7 +268,7 @@ export const Footer = ({
                   {formatNumber(safeTokenUsage.current.totalTokens || 0)}
                 </Badge>
                 <Text className={styles.memoryModeText}>
-                  {getMemoryModeDisplay()}
+                  {getMemoryModeDisplay(memorySettings)}
                 </Text>
               </div>
             </Tooltip>

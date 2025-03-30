@@ -142,11 +142,11 @@ export const useAzureOpenAIConfig = (options = {}) => {
         console.log('Saved configuration to server');
       } catch (serverError) {
         console.error('Server config save error:', serverError);
-        // Even if server save fails, we've saved to localStorage
-        setSuccess('Configuration saved locally, but server update failed');
+        // If server save fails, show error and keep modal open
+        setError('Server update failed: ' + (serverError.message || 'Unknown error'));
         clearStatusMessage();
         
-        // Still trigger the onConfigSaved callback
+        // Still trigger the onConfigSaved callback to update local state
         if (onConfigSaved) {
           onConfigSaved(config);
         }
@@ -154,22 +154,16 @@ export const useAzureOpenAIConfig = (options = {}) => {
         return;
       }
 
-      // All good! Update UI and notify parent
-      setSuccess('Configuration saved successfully');
-      
       // Call the parent callback to update the app's configuration state
       if (onConfigSaved) {
         onConfigSaved(config);
       }
       
-      // Close the dialog after successful save
-      setTimeout(() => {
-        if (onOpenChange) {
-          onOpenChange(false);
-        }
-      }, 1000);
+      // Close the dialog immediately on success without showing a message
+      if (onOpenChange) {
+        onOpenChange(false);
+      }
       
-      clearStatusMessage();
     } catch (error) {
       console.error('Error saving config:', error);
       setError('Failed to save configuration');

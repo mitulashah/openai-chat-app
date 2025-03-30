@@ -6,114 +6,32 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Input,
   Label,
   Text,
   makeStyles,
   shorthands,
-  Slider,
   tokens,
   RadioGroup,
   Radio,
   Checkbox,
-  Textarea,
   Tab,
   TabList,
   Divider
 } from '@fluentui/react-components';
-import { useState, useEffect } from 'react';
-import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useAzureOpenAIConfig } from '../hooks/useAzureOpenAIConfig';
-import { ErrorDisplay } from './ErrorDisplay';
+import { useChat } from '../contexts/ChatContext';
+import { TextSetting } from './settings/TextSetting';
+import { TextAreaSetting } from './settings/TextAreaSetting';
+import { SliderSetting } from './settings/SliderSetting';
+import { SectionHeading } from './settings/SectionHeading';
+import { StatusMessage } from './settings/StatusMessage';
 
 const useStyles = makeStyles({
   form: {
     display: 'flex',
     flexDirection: 'column',
     ...shorthands.gap('16px'),
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('4px'),
-  },
-  sliderGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('8px'),
-  },
-  error: {
-    color: 'red',
-    fontSize: '14px',
-  },
-  success: {
-    color: 'green',
-    fontSize: '14px',
-  },
-  valueDisplay: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-  },
-  settingLabel: {
-    fontWeight: '600',
-    color: tokens.colorNeutralForeground1,
-    marginBottom: '4px',
-    fontSize: '14px',
-  },
-  settingDescription: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-    marginBottom: '8px',
-  },
-  settingContainer: {
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '12px',
-    borderRadius: '6px',
-    marginBottom: '12px',
-  },
-  sectionTitle: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: tokens.colorBrandForeground1,
-    marginBottom: '12px',
-    marginTop: '8px',
-  },
-  radioGroup: {
-    ...shorthands.gap('4px'),
-    marginBottom: '8px',
-  },
-  checkboxWrapper: {
-    marginTop: '8px',
-  },
-  conditionalSection: {
-    marginTop: '8px',
-    paddingLeft: '8px',
-    borderLeft: `2px solid ${tokens.colorNeutralStroke1}`,
-  },
-  systemMessageInput: {
-    marginTop: '8px',
-  },
-  // New styles for collapsible sections
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    padding: '8px 0',
-    borderRadius: '4px',
-    ...shorthands.padding('8px', '12px'),
-    ...shorthands.margin('4px', '0'),
-  },
-  sectionHeaderTitle: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: tokens.colorBrandForeground1,
-    marginLeft: '8px',
-  },
-  sectionContent: {
-    ...shorthands.padding('0', '0', '8px', '12px'),
-    overflow: 'hidden',
-    transition: 'max-height 0.3s ease-in-out',
   },
   // New styles for tab layout and wider dialog
   wideSurface: {
@@ -128,158 +46,25 @@ const useStyles = makeStyles({
   tabContainer: {
     marginTop: '10px',
   },
-  // Error and status styling unified with app-wide standards
-  errorContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    padding: '10px 12px',
-    borderRadius: '4px',
-    backgroundColor: tokens.colorPaletteRedBackground1,
-    color: tokens.colorPaletteRedForeground1,
-    fontSize: '14px',
-    marginTop: '10px',
+  radioGroup: {
+    ...shorthands.gap('4px'),
+    marginBottom: '8px',
   },
-  successContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    padding: '10px 12px',
-    borderRadius: '4px',
-    backgroundColor: tokens.colorPaletteGreenBackground1,
-    color: tokens.colorPaletteGreenForeground1,
-    fontSize: '14px',
-    marginTop: '10px',
+  checkboxWrapper: {
+    marginTop: '8px',
+  },
+  conditionalSection: {
+    marginTop: '8px',
+    paddingLeft: '8px',
+    borderLeft: `2px solid ${tokens.colorNeutralStroke1}`,
+  },
+  settingContainer: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '12px',
+    borderRadius: '6px',
+    marginBottom: '12px',
   }
 });
-
-/**
- * A reusable component for text input settings
- * @param {Object} props - Component props
- * @param {string} props.id - Input field ID
- * @param {string} props.label - Setting label
- * @param {string} props.description - Setting description
- * @param {string} props.value - Current value
- * @param {Function} props.onChange - Change handler
- * @param {boolean} [props.isPassword=false] - Whether to use password input
- * @returns {JSX.Element}
- */
-function TextSetting({ id, label, description, value, onChange, isPassword = false }) {
-  const styles = useStyles();
-  
-  return (
-    <div className={styles.settingContainer}>
-      <div className={styles.inputGroup}>
-        <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
-        <Text className={styles.settingDescription}>{description}</Text>
-        <Input
-          id={id}
-          type={isPassword ? "password" : "text"}
-          value={value}
-          onChange={onChange}
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * A reusable component for textarea input settings
- * @param {Object} props - Component props
- * @param {string} props.id - Input field ID
- * @param {string} props.label - Setting label
- * @param {string} props.description - Setting description
- * @param {string} props.value - Current value
- * @param {Function} props.onChange - Change handler
- * @param {number} [props.rows=4] - Number of visible rows
- * @returns {JSX.Element}
- */
-function TextAreaSetting({ id, label, description, value, onChange, rows = 4 }) {
-  const styles = useStyles();
-  
-  return (
-    <div className={styles.settingContainer}>
-      <div className={styles.inputGroup}>
-        <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
-        <Text className={styles.settingDescription}>{description}</Text>
-        <Textarea
-          id={id}
-          value={value}
-          onChange={onChange}
-          rows={rows}
-          resize="vertical"
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * A reusable component for slider settings
- * @param {Object} props - Component props
- * @param {string} props.id - Input field ID
- * @param {string} props.label - Setting label
- * @param {string} props.description - Setting description
- * @param {number} props.value - Current value
- * @param {Function} props.onChange - Change handler
- * @param {number} [props.min=0] - Minimum value
- * @param {number} [props.max=1] - Maximum value
- * @param {number} [props.step=0.1] - Step increment
- * @returns {JSX.Element}
- */
-function SliderSetting({ id, label, description, value, onChange, min = 0, max = 1, step = 0.1 }) {
-  const styles = useStyles();
-  
-  return (
-    <div className={styles.settingContainer}>
-      <div className={styles.sliderGroup}>
-        <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
-        <Text className={styles.settingDescription}>{description}</Text>
-        <div className={styles.valueDisplay}>
-          <Slider
-            id={id}
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-          />
-          <Text>{value}</Text>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A component for section headings
- * @param {Object} props - Component props
- * @param {string} props.title - Section title
- * @returns {JSX.Element}
- */
-function SectionHeading({ title }) {
-  const styles = useStyles();
-  return <Text className={styles.sectionTitle}>{title}</Text>;
-}
-
-/**
- * Status message component
- * @param {Object} props - Component props
- * @param {string} props.error - Error message
- * @param {string} props.success - Success message
- * @returns {JSX.Element}
- */
-function StatusMessage({ error, success }) {
-  if (error) {
-    return <ErrorDisplay message={error} type="error" />;
-  }
-  
-  if (success) {
-    return <ErrorDisplay message={success} type="success" />;
-  }
-  
-  return null;
-}
 
 /**
  * AdminPanel component for configuring Azure OpenAI settings
@@ -291,6 +76,9 @@ function StatusMessage({ error, success }) {
  */
 export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
   const styles = useStyles();
+  // Get the updateMemorySettings function from ChatContext
+  const { updateMemorySettings } = useChat();
+  
   const { 
     config, 
     setConfigValue,
@@ -298,7 +86,25 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
     success,
     saveConfig,
     isLoading
-  } = useAzureOpenAIConfig({ onConfigSaved, onOpenChange });
+  } = useAzureOpenAIConfig({ 
+    onConfigSaved: (savedConfig) => {
+      // First, update the memory settings in the ChatContext
+      if (updateMemorySettings) {
+        updateMemorySettings({
+          memoryMode: savedConfig.memoryMode,
+          memoryLimit: savedConfig.memoryLimit,
+          includeSystemMessage: savedConfig.includeSystemMessage,
+          systemMessage: savedConfig.systemMessage
+        });
+      }
+      
+      // Then call the original onConfigSaved callback
+      if (onConfigSaved) {
+        onConfigSaved(savedConfig);
+      }
+    }, 
+    onOpenChange 
+  });
   
   // Add tab state to keep track of current selected tab
   const [selectedTab, setSelectedTab] = useState("azure-openai");
