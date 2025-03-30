@@ -82,24 +82,38 @@ export const ChatProvider = ({ children }) => {
   };
 
   // Function to handle sending a message - memoized to prevent unnecessary recreations
-  const handleSend = useCallback(async () => {
-    if (!inputState.input.trim() && !inputState.selectedImage && !inputState.selectedVoice) return;
+  const handleSend = useCallback(async (messageText, selectedImg, selectedVoiceRec) => {
+    // If direct parameters are provided, use those instead of state values
+    const messageToSend = messageText !== undefined ? messageText : inputState.input;
+    const imageToSend = selectedImg !== undefined ? selectedImg : inputState.selectedImage;
+    const voiceToSend = selectedVoiceRec !== undefined ? selectedVoiceRec : inputState.selectedVoice;
+    
+    if (!messageToSend.trim() && !imageToSend && !voiceToSend) return;
     if (messagesState.isLoading) return;
 
     // Send the message using our messages hook
     await messagesState.handleSend(
-      inputState.input,
-      inputState.selectedImage,
-      inputState.selectedVoice
+      messageToSend,
+      imageToSend,
+      voiceToSend
     );
     
-    // Reset the input fields
-    inputState.resetInputs();
+    // Reset the input fields only if we used the state values
+    // When called from MessageInput with explicit params, input is already cleared
+    if (messageText === undefined) {
+      inputState.resetInputs();
+    } else {
+      // If only clearing attachments
+      if (imageToSend) inputState.setSelectedImage(null);
+      if (voiceToSend) inputState.setSelectedVoice(null);
+    }
   }, [
     inputState.input, 
     inputState.selectedImage, 
     inputState.selectedVoice, 
     inputState.resetInputs,
+    inputState.setSelectedImage,
+    inputState.setSelectedVoice,
     messagesState.handleSend,
     messagesState.isLoading
   ]);

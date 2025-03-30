@@ -3,19 +3,8 @@ import {
   Text,
   makeStyles,
   tokens,
-  Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
-  MenuItem,
-  MenuButton,
-  useId,
 } from '@fluentui/react-components';
-import { 
-  NavigationRegular, 
-  SettingsRegular,
-  InfoRegular,
-} from '@fluentui/react-icons';
+import { HeaderMenu } from './HeaderMenu';
 
 const useStyles = makeStyles({
   header: {
@@ -50,27 +39,13 @@ export const ChatHeader = ({
   onAbout
 }) => {
   const styles = useStyles();
-  const menuId = useId('app-menu');
   
   return (
     <div className={styles.header}>
-      <Menu id={menuId}>
-        <MenuTrigger>
-          <MenuButton icon={<NavigationRegular />}>Menu</MenuButton>
-        </MenuTrigger>
-        <MenuPopover>
-          <MenuList>
-            <MenuItem icon={<SettingsRegular />} onClick={onOpenSettings}>
-              Settings
-            </MenuItem>
-            {onAbout && (
-              <MenuItem icon={<InfoRegular />} onClick={onAbout}>
-                About
-              </MenuItem>
-            )}
-          </MenuList>
-        </MenuPopover>
-      </Menu>
+      <HeaderMenu 
+        onOpenSettings={onOpenSettings}
+        onAbout={onAbout}
+      />
       <div>
         <Text className={styles.title} size={600} weight="semibold">{appTitle}</Text>
         <Text className={styles.version}>{appVersion}</Text>

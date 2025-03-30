@@ -77,8 +77,14 @@ export const MessageInput = ({
     // Set sending state to true briefly
     setIsSending(true);
     
-    // Call the actual send handler
-    handleSend();
+    // Store message content before clearing the input
+    const messageToSend = input;
+    
+    // Clear the input field immediately for better UX
+    setInput('');
+    
+    // Call the actual send handler with the stored message
+    handleSend(messageToSend, selectedImage, selectedVoice);
     
     // Reset sending state after a short delay
     setTimeout(() => {
