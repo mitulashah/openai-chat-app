@@ -109,7 +109,7 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
       <div className={styles.chatContent}>
         {!isConfigured && !configLoading && (
           <ErrorDisplay 
-            message="Azure OpenAI is not configured. Please configure it in the settings menu."
+            message="Not configured. Please configure it in the settings menu."
             type="warning"
             actionLabel="Open Settings"
             onAction={() => setIsAdminPanelOpen(true)}

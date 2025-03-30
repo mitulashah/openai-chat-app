@@ -6,6 +6,7 @@ A modern chat application built with React and Node.js that integrates with Azur
 
 - Real-time chat interface with Azure OpenAI integration
 - Image attachment support (up to 5MB per image)
+- Model Context Protocol (MCP) support for enhanced conversation context (coming)
 - Dracula-inspired light and dark themes
 - Admin panel for Azure OpenAI configuration
 - Responsive design using Microsoft's Fluent UI 2
@@ -25,7 +26,7 @@ A modern chat application built with React and Node.js that integrates with Azur
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - Azure OpenAI API access
 - npm or yarn package manager
 
@@ -33,7 +34,7 @@ A modern chat application built with React and Node.js that integrates with Azur
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/mitulashah/openai-chat-app.git
 cd openai-chat-app
 ```
 
@@ -63,12 +64,26 @@ npm run dev
    - Enter your Azure OpenAI configuration details
    - Save the configuration
 
+5. Configure MCP (Optional):
+   - In the Settings panel, navigate to the MCP Configuration section
+   - Add MCP servers with their respective URLs
+   - Enable or disable MCP servers as needed
+
 ## Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
 ```
 PORT=3001
 ```
+
+## Configuration Settings
+
+The application provides several configuration options through the settings panel:
+
+- **Azure OpenAI Settings**: API key, endpoint, deployment name
+- **MCP Configuration**: Add and manage Model Context Protocol servers
+- **Memory Settings**: Control message history and context window
+- **Theme Settings**: Toggle between light and dark themes
 
 ## Contributing
 
@@ -80,4 +95,4 @@ PORT=3001
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

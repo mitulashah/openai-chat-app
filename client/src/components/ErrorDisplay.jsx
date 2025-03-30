@@ -1,6 +1,7 @@
 import React from 'react';
 import { makeStyles, tokens, Text, Button, shorthands } from '@fluentui/react-components';
 import { ErrorCircleRegular, DismissRegular } from '@fluentui/react-icons';
+import { useSettingsStyles } from './settings/SettingsStyles';
 
 const useStyles = makeStyles({
   errorContainer: {
@@ -42,7 +43,7 @@ const useStyles = makeStyles({
   },
   actionButton: {
     minWidth: 'unset',
-    padding: '4px',
+    padding: '4px 8px',
   },
   dismissButton: {
     position: 'absolute',
@@ -72,6 +73,7 @@ export const ErrorDisplay = ({
   onAction
 }) => {
   const styles = useStyles();
+  const settingsStyles = useSettingsStyles();
   
   if (!message) return null;
   
@@ -96,10 +98,10 @@ export const ErrorDisplay = ({
       
       {actionLabel && onAction && (
         <Button 
-          appearance="subtle"
+          appearance={type === 'warning' ? 'outline' : 'subtle'}
           size="small"
           onClick={onAction}
-          className={styles.actionButton}
+          className={`${styles.actionButton} ${type === 'warning' ? settingsStyles.warningActionButton : ''}`}
         >
           {actionLabel}
         </Button>

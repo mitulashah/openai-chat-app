@@ -50,5 +50,20 @@ export const useSettingsStyles = makeStyles({
     color: tokens.colorBrandForeground1,
     marginBottom: '12px',
     marginTop: '8px',
+  },
+  warningActionButton: {
+    backgroundColor: 'rgba(243, 242, 241, 0.1)',
+    color: tokens.colorPaletteYellowForeground1,
+    borderColor: tokens.colorPaletteYellowBorder1,
+    '&:hover': {
+      backgroundColor: 'rgba(243, 242, 241, 0.2)',
+      color: tokens.colorPaletteYellowForeground1,
+      borderColor: tokens.colorPaletteYellowBorder2,
+    },
+    '&:active': {
+      backgroundColor: 'rgba(243, 242, 241, 0.3)',
+      color: tokens.colorPaletteYellowForeground1,
+      borderColor: tokens.colorPaletteYellowBorder2,
+    }
   }
 });

@@ -168,7 +168,7 @@ export const Footer = ({
         <div className={styles.statusText}>
           <div className={`${styles.statusDot} ${isConfigured ? styles.statusDotConfigured : styles.statusDotUnconfigured}`} />
           <Text size={200}>
-            {isConfigured ? 'Azure OpenAI Configured' : 'Azure OpenAI Not Configured'}
+            {isConfigured ? 'Configured' : 'Not Configured'}
           </Text>
         </div>
         
