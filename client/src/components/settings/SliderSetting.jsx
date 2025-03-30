@@ -20,8 +20,10 @@ export function SliderSetting({ id, label, description, value, onChange, min = 0
   return (
     <div className={styles.settingContainer}>
       <div className={styles.sliderGroup}>
-        <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
-        <Text className={styles.settingDescription}>{description}</Text>
+        <div className={styles.labelContainer}>
+          <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
+          <Text className={styles.settingDescription}>{description}</Text>
+        </div>
         <div className={styles.valueDisplay}>
           <Slider
             id={id}

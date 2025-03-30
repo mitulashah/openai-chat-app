@@ -18,8 +18,10 @@ export function TextAreaSetting({ id, label, description, value, onChange, rows 
   return (
     <div className={styles.settingContainer}>
       <div className={styles.inputGroup}>
-        <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
-        <Text className={styles.settingDescription}>{description}</Text>
+        <div className={styles.labelContainer}>
+          <Label htmlFor={id} className={styles.settingLabel}>{label}</Label>
+          <Text className={styles.settingDescription}>{description}</Text>
+        </div>
         <Textarea
           id={id}
           value={value}

@@ -21,6 +21,8 @@ export const useAzureOpenAIConfig = (options = {}) => {
     memoryLimit: 6,
     includeSystemMessage: false,
     systemMessage: 'You are a helpful assistant.',
+    apiVersion: '2023-05-15',
+    maxTokens: 800,
   };
 
   // State for configuration
@@ -101,6 +103,8 @@ export const useAzureOpenAIConfig = (options = {}) => {
             memoryLimit: data.memoryLimit !== undefined ? data.memoryLimit : prev.memoryLimit,
             includeSystemMessage: data.includeSystemMessage !== undefined ? data.includeSystemMessage : prev.includeSystemMessage,
             systemMessage: data.systemMessage || prev.systemMessage,
+            apiVersion: data.apiVersion || prev.apiVersion,
+            maxTokens: data.maxTokens !== undefined ? data.maxTokens : prev.maxTokens,
           };
         });
         console.log('Synchronized config with server');

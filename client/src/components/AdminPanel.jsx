@@ -177,6 +177,14 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
                       value={config.deploymentName}
                       onChange={handleInputChange('deploymentName')}
                     />
+                    
+                    <TextSetting
+                      id="apiVersion"
+                      label="API Version"
+                      description="The Azure OpenAI API version to use (e.g., 2023-05-15)"
+                      value={config.apiVersion}
+                      onChange={handleInputChange('apiVersion')}
+                    />
                   </div>
                 )}
                 
@@ -197,6 +205,17 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
                       description="Controls diversity via nucleus sampling (0.0-1.0)"
                       value={config.topP}
                       onChange={handleSliderChange('topP')}
+                    />
+                    
+                    <SliderSetting
+                      id="maxTokens"
+                      label="Max Tokens"
+                      description="Maximum number of tokens to generate in the response (1-4000)"
+                      value={config.maxTokens}
+                      onChange={handleSliderChange('maxTokens')}
+                      min={1}
+                      max={4000}
+                      step={1}
                     />
                   </div>
                 )}
