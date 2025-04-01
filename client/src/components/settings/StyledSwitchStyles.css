@@ -1,0 +1,195 @@
+/* StyledSwitchStyles.css */
+/* Base styling for the switch component */
+.styled-switch {
+  --switch-height: 20px;
+  --switch-width: 40px;
+  --switch-indicator-size: 16px;
+  --switch-indicator-padding: 2px;
+}
+
+/* Indicator (the moving part) */
+.styled-switch .fui-Switch__indicator {
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+
+/* Track (the background) */
+.styled-switch .fui-Switch__track {
+  background-color: #999;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+/* Hover state for the track */
+.styled-switch:hover .fui-Switch__track {
+  background-color: #777;
+}
+
+/* Checked state - primary variant */
+/* Dracula theme - primary (purple) */
+.styled-switch.dracula.primary.fui-Switch--checked .fui-Switch__track {
+  background-color: #BD93F9; /* Dracula purple */
+}
+.styled-switch.dracula.primary.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #D6ACFF; /* Lighter dracula purple */
+}
+
+/* Nord theme - primary (blue) */
+.styled-switch.nord.primary.fui-Switch--checked .fui-Switch__track {
+  background-color: #81A1C1; /* Nord blue */
+}
+.styled-switch.nord.primary.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #88C0D0; /* Lighter nord blue */
+}
+
+/* Checked state - success variant */
+/* Dracula theme - success (green) */
+.styled-switch.dracula.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B; /* Dracula green */
+}
+.styled-switch.dracula.success.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #8AFFA7; /* Lighter dracula green */
+}
+
+/* Nord theme - success (green) */
+.styled-switch.nord.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #A3BE8C; /* Nord green */
+}
+.styled-switch.nord.success.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #B9D9AA; /* Lighter nord green */
+}
+
+/* Checked state - danger variant */
+/* Dracula theme - danger (red) */
+.styled-switch.dracula.danger.fui-Switch--checked .fui-Switch__track {
+  background-color: #FF5555; /* Dracula red */
+}
+.styled-switch.dracula.danger.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #FF7777; /* Lighter dracula red */
+}
+
+/* Nord theme - danger (red) */
+.styled-switch.nord.danger.fui-Switch--checked .fui-Switch__track {
+  background-color: #BF616A; /* Nord red */
+}
+.styled-switch.nord.danger.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #D08770; /* Nord orange-red */
+}
+
+/* Disabled state */
+.styled-switch.fui-Switch--disabled {
+  opacity: 0.6;
+}
+
+/* Direct targeting with highest specificity for the FluentProvider context */
+.fui-FluentProvider1 .styled-switch.fui-Switch .fui-Switch__track,
+[class*="fui-FluentProvider"] .styled-switch.fui-Switch .fui-Switch__track,
+div[data-theme] .styled-switch.fui-Switch .fui-Switch__track {
+  background-color: #444444 !important;
+  border-color: transparent !important;
+}
+
+.fui-FluentProvider1 .styled-switch.fui-Switch--checked .fui-Switch__track,
+[class*="fui-FluentProvider"] .styled-switch.fui-Switch--checked .fui-Switch__track,
+div[data-theme] .styled-switch.fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B !important; /* Dracula green */
+}
+
+.fui-FluentProvider1 .styled-switch.fui-Switch .fui-Switch__indicator,
+[class*="fui-FluentProvider"] .styled-switch.fui-Switch .fui-Switch__indicator,
+div[data-theme] .styled-switch.fui-Switch .fui-Switch__indicator {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+/* Hover effects */
+.fui-FluentProvider1 .styled-switch.fui-Switch:hover .fui-Switch__track,
+[class*="fui-FluentProvider"] .styled-switch.fui-Switch:hover .fui-Switch__track,
+div[data-theme] .styled-switch.fui-Switch:hover .fui-Switch__track {
+  background-color: #666666 !important;
+}
+
+.fui-FluentProvider1 .styled-switch.fui-Switch--checked:hover .fui-Switch__track,
+[class*="fui-FluentProvider"] .styled-switch.fui-Switch--checked:hover .fui-Switch__track,
+div[data-theme] .styled-switch.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #72FFA0 !important;
+}
+
+/* Direct selector targeting to override FluentProvider styles */
+.styled-switch .fui-Switch__track {
+  background-color: rgba(128, 128, 128, 0.7) !important; /* Default unchecked state - dark gray */
+  transition: all 0.2s ease !important;
+}
+
+.styled-switch .fui-Switch__indicator {
+  background-color: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Success variant - Dracula theme */
+.styled-switch.dracula.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B !important; /* Dracula green */
+}
+
+/* Success variant - Nord theme */
+.styled-switch.nord.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #A3BE8C !important; /* Nord green */
+}
+
+/* Danger variant - Dracula theme */
+.styled-switch.dracula.danger.fui-Switch--checked .fui-Switch__track {
+  background-color: #FF5555 !important; /* Dracula red */
+}
+
+/* Danger variant - Nord theme */
+.styled-switch.nord.danger.fui-Switch--checked .fui-Switch__track {
+  background-color: #BF616A !important; /* Nord red */
+}
+
+/* Primary variant - Dracula theme */
+.styled-switch.dracula.primary.fui-Switch--checked .fui-Switch__track {
+  background-color: #BD93F9 !important; /* Dracula purple */
+}
+
+/* Primary variant - Nord theme */
+.styled-switch.nord.primary.fui-Switch--checked .fui-Switch__track {
+  background-color: #81A1C1 !important; /* Nord blue */
+}
+
+/* Hover states with increased specificity */
+.styled-switch:hover .fui-Switch__track {
+  background-color: rgba(100, 100, 100, 0.8) !important; /* Darker gray for hover */
+}
+
+.styled-switch.dracula.success.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #8AFFA7 !important; /* Lighter Dracula green */
+}
+
+.styled-switch.nord.success.fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #B9D9AA !important; /* Lighter Nord green */
+}
+
+/* Ensure the indicator remains white when checked */
+.styled-switch.fui-Switch--checked .fui-Switch__indicator {
+  background-color: white !important;
+}
+
+/* Additional selector to increase specificity */
+html body .styled-switch .fui-Switch__track {
+  background-color: rgba(128, 128, 128, 0.7) !important;
+}
+
+html body .styled-switch.dracula.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B !important;
+}
+
+html body .styled-switch.nord.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #A3BE8C !important;
+}
+
+/* Class to override any possible conflicting styles */
+.force-background-override.styled-switch.success.fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B !important;
+}

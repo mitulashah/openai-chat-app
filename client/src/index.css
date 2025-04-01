@@ -37,3 +37,36 @@ textarea:focus,
 [class*="skeletonContent"] {
   transition: none !important;
 }
+
+/* Global styling for Switch components with increased specificity */
+/* Target switches within the FluentProvider */
+.fui-FluentProvider1 .fui-Switch .fui-Switch__track,
+html body .fui-Switch .fui-Switch__track {
+  background-color: #444444 !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* When checked, make track green - higher specificity */
+.fui-FluentProvider1 .fui-Switch--checked .fui-Switch__track,
+html body .fui-Switch--checked .fui-Switch__track {
+  background-color: #50FA7B !important;
+}
+
+/* Make the indicator (thumb) white with proper shadow */
+.fui-FluentProvider1 .fui-Switch .fui-Switch__indicator,
+html body .fui-Switch .fui-Switch__indicator {
+  background-color: #ffffff !important;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Hover states with increased specificity */
+.fui-FluentProvider1 .fui-Switch:hover .fui-Switch__track,
+html body .fui-Switch:hover .fui-Switch__track {
+  background-color: #666666 !important; /* Darker gray on hover when unchecked */
+}
+
+.fui-FluentProvider1 .fui-Switch--checked:hover .fui-Switch__track,
+html body .fui-Switch--checked:hover .fui-Switch__track {
+  background-color: #72FFA0 !important; /* Lighter green on hover when checked */
+}

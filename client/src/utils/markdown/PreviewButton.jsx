@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { makeStyles, tokens, Button, Tooltip } from '@fluentui/react-components';
-import { CopyRegular, CheckmarkRegular } from '@fluentui/react-icons';
+import { EyeRegular, CodeRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
-  copyButton: {
+  previewButton: {
     position: 'absolute',
     top: '5px',
-    right: '5px',
+    right: '38px', // Positioned to the left of the copy button
     minWidth: 'unset',
     width: '28px',
     height: '28px',
@@ -27,35 +27,27 @@ const useStyles = makeStyles({
 });
 
 /**
- * A button that copies text to clipboard when clicked
+ * A button that toggles between code view and preview mode
  * 
  * @param {Object} props - Component props
- * @param {string} props.text - Text to copy to clipboard
+ * @param {boolean} props.isPreviewMode - Whether the preview mode is active
+ * @param {function} props.onToggle - Function to call when toggling preview mode
  * @returns {JSX.Element}
  */
-export const CopyButton = ({ text }) => {
+export const PreviewButton = ({ isPreviewMode, onToggle }) => {
   const styles = useStyles();
-  const [isCopied, setIsCopied] = useState(false);
-  
-  const handleCopy = async () => {
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
-  };
   
   return (
     <Tooltip
-      content={isCopied ? "Copied!" : "Copy to clipboard"}
+      content={isPreviewMode ? "Show code" : "Preview markdown"}
       relationship="label"
     >
       <Button 
-        className={styles.copyButton}
+        className={styles.previewButton}
         appearance="subtle"
-        icon={isCopied ? <CheckmarkRegular /> : <CopyRegular />}
-        onClick={handleCopy}
-        aria-label="Copy to clipboard"
+        icon={isPreviewMode ? <CodeRegular /> : <EyeRegular />}
+        onClick={onToggle}
+        aria-label={isPreviewMode ? "Show code" : "Preview markdown"}
       />
     </Tooltip>
   );

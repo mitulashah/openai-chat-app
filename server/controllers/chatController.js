@@ -17,23 +17,15 @@ class ChatController {
    */
   static async processMessage(req, res, next) {
     try {
-      // Log the request details
-      console.log('--- Chat Request Details ---');
-      console.log('Request body:', req.body);
-      console.log('Files attached:', req.files ? JSON.stringify(Object.keys(req.files)) : 'None');
-      console.log('Content type:', req.get('Content-Type'));
+      // Parse message data from the request
+      const messageData = JSON.parse(req.body.message);
       
-      // Create message object from request
-      const messageData = {
-        message: req.body.message || '',
-        previousMessages: req.body.previousMessages ? JSON.parse(req.body.previousMessages) : [],
-        files: req.files || {}
-      };
-      
+      // Create message instance
       const message = new Message(messageData);
       
-      // Validate the message
+      // Validate message
       const validation = message.validate();
+      
       if (!validation.isValid) {
         return res.status(400).json({
           error: 'Invalid message',
@@ -66,14 +58,20 @@ class ChatController {
       // Add user message to context
       messageContext.push(userMessage);
       
+      // Add MCP context if available
+      if (messageData.mcpContext && Array.isArray(messageData.mcpContext) && messageData.mcpContext.length > 0) {
+        // Add MCP context messages to the context
+        messageContext.push(...messageData.mcpContext);
+        console.log(`Added ${messageData.mcpContext.length} MCP context messages from:`, 
+          messageData.mcpContext.map(ctx => ctx.source).join(', '));
+      }
+      
       console.log('Memory mode:', config.memoryMode);
       console.log('Total messages being sent to OpenAI:', messageContext.length);
       console.log('User message format:', Array.isArray(userMessage.content) ? 'multimodal' : 'text');
       
       // Get response from OpenAI
       const completion = await OpenAIService.createCompletion(messageContext);
-      
-      console.log('OpenAI response received');
       
       // Format response for client
       const response = message.formatResponse(completion, {
@@ -82,9 +80,8 @@ class ChatController {
         req
       });
       
-      // Send response to client
+      // Return response
       res.json(response);
-      
     } catch (error) {
       next(error);
     }

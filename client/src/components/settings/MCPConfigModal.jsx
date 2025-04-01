@@ -1,24 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
-  DialogTrigger, 
   DialogSurface, 
   DialogTitle, 
-  DialogContent,
   DialogBody,
   DialogActions,
   Button,
   makeStyles,
   tokens,
-  Input,
-  Switch,
-  Label,
   Text
 } from '@fluentui/react-components';
 import { SectionHeading } from './SectionHeading';
-import { TextSetting } from './TextSetting';
-import { useSettingsStyles } from './SettingsStyles';
-import { EditRegular, CheckmarkRegular, DismissRegular } from '@fluentui/react-icons';
+import { ServerItem } from './ServerItem';
+import { AddServerForm } from './AddServerForm';
+import { useMCPClient } from '../../hooks/useMCPClient';
+import { StatusMessage } from './StatusMessage';
 
 const useStyles = makeStyles({
   modalContent: {
@@ -27,96 +23,115 @@ const useStyles = makeStyles({
     gap: '16px',
     padding: '16px 0',
   },
-  fullWidth: {
-    width: '100%',
-  },
   description: {
     fontSize: '14px',
     color: tokens.colorNeutralForeground3,
     marginBottom: '16px',
   },
-  serverItem: {
+  serverList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    padding: '12px',
-    borderRadius: '4px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    marginBottom: '12px',
-  },
-  serverHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  buttonContainer: {
-    display: 'flex',
-    gap: '8px',
     marginTop: '8px',
   },
-  editActions: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '8px',
+  statusMessage: {
+    marginTop: '12px',
   }
 });
 
 export const MCPConfigModal = ({ isOpen, onClose }) => {
   const styles = useStyles();
-  const settingsStyles = useSettingsStyles();
+  const [status, setStatus] = useState({ message: '', type: '' });
   
-  // Sample state for MCP configuration
-  const [servers, setServers] = React.useState([
-    { id: 1, name: 'Default MCP Server', url: 'https://mcp-server.example.com', enabled: true }
-  ]);
-  const [newServerUrl, setNewServerUrl] = React.useState('');
-  const [newServerName, setNewServerName] = React.useState('');
-  const [editingServer, setEditingServer] = React.useState(null);
-  const [editName, setEditName] = React.useState('');
-  const [editUrl, setEditUrl] = React.useState('');
+  // Use our custom hook to manage MCP client and servers
+  const { 
+    servers, 
+    addServer, 
+    toggleServer, 
+    removeServer, 
+    updateServer,
+    checkMCPHealth,
+  } = useMCPClient();
   
-  const handleAddServer = () => {
-    if (newServerUrl && newServerName) {
-      setServers([
-        ...servers,
-        { 
-          id: Date.now(), 
-          name: newServerName, 
-          url: newServerUrl, 
-          enabled: true 
+  const [editingServer, setEditingServer] = useState(null);
+  
+  // Start editing a server
+  const startEditing = (id) => {
+    setEditingServer(id);
+  };
+  
+  // Stop editing servers
+  const stopEditing = () => {
+    setEditingServer(null);
+  };
+  
+  // Check health of a specific server
+  const handleCheckServerHealth = async (serverId) => {
+    setStatus({ message: 'Checking server health...', type: 'info' });
+    
+    try {
+      const healthResults = await checkMCPHealth();
+      if (healthResults.length > 0) {
+        const serverResult = healthResults.find(result => parseInt(result.id) === serverId);
+        if (serverResult) {
+          if (serverResult.status === 'healthy') {
+            setStatus({ 
+              message: `Server ${serverResult.name} is healthy!`, 
+              type: 'success' 
+            });
+          } else {
+            setStatus({ 
+              message: `Server ${serverResult.name} is unhealthy: ${serverResult.error || 'unknown error'}`, 
+              type: 'error' 
+            });
+          }
         }
-      ]);
-      setNewServerUrl('');
-      setNewServerName('');
+      }
+    } catch (error) {
+      setStatus({ message: `Health check failed: ${error.message}`, type: 'error' });
     }
   };
   
-  const handleToggleServer = (id) => {
-    setServers(servers.map(server => 
-      server.id === id ? { ...server, enabled: !server.enabled } : server
-    ));
+  // Check health of all servers
+  const handleCheckAllServersHealth = async () => {
+    setStatus({ message: 'Checking all servers health...', type: 'info' });
+    
+    try {
+      const healthResults = await checkMCPHealth();
+      const healthyCount = healthResults.filter(result => result.status === 'healthy').length;
+      
+      if (healthyCount === healthResults.length) {
+        setStatus({ 
+          message: `All ${healthResults.length} servers are healthy!`, 
+          type: 'success' 
+        });
+      } else {
+        setStatus({ 
+          message: `${healthyCount} of ${healthResults.length} servers are healthy.`, 
+          type: 'warning' 
+        });
+      }
+    } catch (error) {
+      setStatus({ message: `Health check failed: ${error.message}`, type: 'error' });
+    }
   };
   
-  const handleRemoveServer = (id) => {
-    setServers(servers.filter(server => server.id !== id));
+  // Handler for the save button
+  const handleSave = () => {
+    // In a real implementation, you might want to persist changes to a backend
+    setStatus({ message: 'Configuration saved successfully!', type: 'success' });
+    setTimeout(() => {
+      onClose();
+    }, 1000);
   };
-
-  const handleEditServer = (server) => {
-    setEditingServer(server.id);
-    setEditName(server.name);
-    setEditUrl(server.url);
-  };
-
-  const handleSaveEdit = (id) => {
-    setServers(servers.map(server => 
-      server.id === id ? { ...server, name: editName, url: editUrl } : server
-    ));
-    setEditingServer(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingServer(null);
-  };
+  
+  // Clear status message when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStatus({ message: '', type: '' });
+      stopEditing();
+    }
+  }, [isOpen]);
   
   return (
     <Dialog open={isOpen} onOpenChange={(e, data) => !data.open && onClose()}>
@@ -128,110 +143,38 @@ export const MCPConfigModal = ({ isOpen, onClose }) => {
               Configure Model Context Protocol (MCP) servers to enhance your chat experience by providing additional context to your conversations.
             </Text>
             
+            {status.message && (
+              <div className={styles.statusMessage}>
+                <StatusMessage message={status.message} type={status.type} />
+              </div>
+            )}
+            
             <SectionHeading title="MCP Servers" />
             
-            {servers.map(server => (
-              <div key={server.id} className={styles.serverItem}>
-                {editingServer === server.id ? (
-                  // Edit mode
-                  <>
-                    <div className={settingsStyles.inputGroup}>
-                      <Label htmlFor={`edit-name-${server.id}`}>Server Name</Label>
-                      <Input 
-                        id={`edit-name-${server.id}`}
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className={styles.fullWidth}
-                      />
-                    </div>
-                    <div className={settingsStyles.inputGroup}>
-                      <Label htmlFor={`edit-url-${server.id}`}>Server URL</Label>
-                      <Input 
-                        id={`edit-url-${server.id}`}
-                        value={editUrl}
-                        onChange={(e) => setEditUrl(e.target.value)}
-                        className={styles.fullWidth}
-                      />
-                    </div>
-                    <div className={styles.editActions}>
-                      <Button 
-                        appearance="primary" 
-                        icon={<CheckmarkRegular />}
-                        onClick={() => handleSaveEdit(server.id)}
-                      >
-                        Save
-                      </Button>
-                      <Button 
-                        appearance="secondary" 
-                        icon={<DismissRegular />}
-                        onClick={handleCancelEdit}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  // View mode
-                  <>
-                    <div className={styles.serverHeader}>
-                      <Text weight="semibold">{server.name}</Text>
-                      <Switch 
-                        checked={server.enabled}
-                        onChange={() => handleToggleServer(server.id)}
-                        label="Enabled"
-                      />
-                    </div>
-                    <Text>{server.url}</Text>
-                    <div className={styles.buttonContainer}>
-                      <Button 
-                        appearance="subtle" 
-                        icon={<EditRegular />}
-                        onClick={() => handleEditServer(server)}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        appearance="subtle" 
-                        onClick={() => handleRemoveServer(server.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-            
-            <SectionHeading title="Add New MCP Server" />
-            <div className={settingsStyles.inputGroup}>
-              <Label htmlFor="server-name">Server Name</Label>
-              <Input 
-                id="server-name"
-                value={newServerName}
-                onChange={(e) => setNewServerName(e.target.value)}
-                placeholder="Enter server name"
-                className={styles.fullWidth}
-              />
+            <div className={styles.serverList}>
+              {servers.map(server => (
+                <ServerItem
+                  key={server.id}
+                  server={server}
+                  isEditing={editingServer === server.id}
+                  onToggle={toggleServer}
+                  onRemove={removeServer}
+                  onEdit={startEditing}
+                  onSave={updateServer}
+                  onCancelEdit={stopEditing}
+                  onCheckHealth={handleCheckServerHealth}
+                />
+              ))}
             </div>
             
-            <div className={settingsStyles.inputGroup}>
-              <Label htmlFor="server-url">Server URL</Label>
-              <Input 
-                id="server-url"
-                value={newServerUrl}
-                onChange={(e) => setNewServerUrl(e.target.value)}
-                placeholder="https://mcp-server.example.com"
-                className={styles.fullWidth}
-              />
-            </div>
-            
-            <Button appearance="primary" onClick={handleAddServer}>
-              Add Server
-            </Button>
+            <AddServerForm onAddServer={addServer} />
           </div>
         </DialogBody>
         <DialogActions>
-          <Button appearance="primary" onClick={onClose}>
+          <Button appearance="secondary" onClick={handleCheckAllServersHealth}>
+            Check All Servers Health
+          </Button>
+          <Button appearance="primary" onClick={handleSave}>
             Save
           </Button>
           <Button appearance="secondary" onClick={onClose}>

@@ -1,27 +1,19 @@
 /**
- * Service for handling chat-related API calls
+ * Chat Service - Handles API calls to the chat server
  */
+import axios from 'axios';
+import mcpClientManager from './mcp/mcpClient';
 
-// Define the API base URL to ensure we're always calling the correct server port
-const API_BASE_URL = 'http://localhost:3002'; // Updated from 3001 to 3002 to match the new server port
+const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001';
 
 /**
- * Checks if Azure OpenAI is configured by calling the health endpoint
- * @returns {Promise<boolean>} Whether Azure OpenAI is configured
+ * Check if the API is configured properly
+ * @returns {Promise<boolean>} Promise that resolves to true if configured, false otherwise
  */
 export const checkConfiguration = async () => {
   try {
-    console.log('Checking API configuration...');
-    const response = await fetch(`${API_BASE_URL}/api/health`);
-    
-    if (!response.ok) {
-      console.error('Health check failed:', response.status, response.statusText);
-      return false;
-    }
-    
-    const data = await response.json();
-    console.log('Configuration status received:', data);
-    return data.configured;
+    const config = await getServerConfig();
+    return Boolean(config && config.endpoint && config.deploymentName);
   } catch (error) {
     console.error('Error checking configuration:', error);
     return false;
@@ -29,138 +21,103 @@ export const checkConfiguration = async () => {
 };
 
 /**
- * Retrieves current Azure OpenAI configuration from the server
- * @returns {Promise<Object>} The current configuration
+ * Send a message and get a response
+ * @param {Object} message - Message object
+ * @param {Array} previousMessages - Previous messages for context
+ * @param {Object} options - Additional options for the request
+ * @returns {Promise<Object>} Promise with the response
+ */
+export const sendMessage = async (message, previousMessages = [], options = {}) => {
+  try {
+    // First, try to get relevant context from MCP servers
+    let mcpContext = [];
+    try {
+      const mcpResults = await mcpClientManager.getContextFromAll({
+        messages: [...previousMessages, message],
+        parameters: {
+          maxResults: 5,
+          minRelevanceScore: 0.7
+        }
+      });
+
+      // Filter successful results and extract context
+      mcpContext = mcpResults
+        .filter(result => result.success && result.data?.context)
+        .map(result => ({
+          role: 'system',
+          content: `[MCP Context from ${result.source}]: ${result.data.context}`,
+          source: result.source
+        }));
+
+      console.log(`Received context from ${mcpContext.length} MCP servers:`, 
+        mcpContext.map(ctx => ctx.source).join(', '));
+    } catch (mcpError) {
+      console.error('Error fetching MCP context:', mcpError);
+      // Continue without MCP context if there's an error
+    }
+
+    // Prepare data for the chat API
+    const formData = new FormData();
+    formData.append('message', JSON.stringify({
+      ...message,
+      mcpContext // Include MCP context with the message
+    }));
+    
+    // Append files if present
+    if (options.imageFile) {
+      formData.append('image', options.imageFile);
+    }
+    
+    if (options.voiceFile) {
+      formData.append('voice', options.voiceFile);
+    }
+    
+    // Send to chat API
+    const response = await axios.post(`${API_URL}/api/chat`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get configuration from the server
+ * @returns {Promise<Object>} Promise with the configuration
  */
 export const getServerConfig = async () => {
   try {
-    console.log('Fetching server configuration...');
-    const response = await fetch(`${API_BASE_URL}/api/config`);
-    
-    if (!response.ok) {
-      console.error('Config fetch failed:', response.status, response.statusText);
-      throw new Error('Failed to fetch configuration');
-    }
-    
-    const data = await response.json();
-    console.log('Configuration received from server');
-    return data;
+    const response = await axios.get(`${API_URL}/api/config`);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching server configuration:', error);
+    console.error('Error getting server config:', error);
     throw error;
   }
 };
 
 /**
- * Converts chat messages to the format expected by the API
- * @param {Array} messages - The chat messages
- * @returns {Array} Formatted messages for the API
+ * Update configuration on the server
+ * @param {Object} config - New configuration
+ * @returns {Promise<Object>} Promise with the updated configuration
  */
-const formatMessagesForAPI = (messages) => {
-  return messages.map(msg => ({
-    role: msg.sender === 'user' ? 'user' : 'assistant',
-    content: msg.text
-  }));
-};
-
-/**
- * Sends a message to the chat API
- * @param {string} message - The message text
- * @param {File|null} image - Optional image file to send
- * @param {File|null} voice - Optional voice recording file to send
- * @param {Array} previousMessages - Array of previous messages in the conversation
- * @returns {Promise<Object>} The AI response
- */
-export const sendMessage = async (message, image = null, voice = null, previousMessages = []) => {
+export const updateServerConfig = async (config) => {
   try {
-    // Create FormData for multipart/form-data
-    const formData = new FormData();
-    formData.append('message', message);
-    
-    if (image) {
-      formData.append('image', image);
-    }
-    
-    if (voice) {
-      formData.append('voice', voice);
-    }
-    
-    // Convert and add previous messages if they exist
-    if (previousMessages && previousMessages.length > 0) {
-      const formattedMessages = formatMessagesForAPI(previousMessages);
-      formData.append('previousMessages', JSON.stringify(formattedMessages));
-    }
-    
-    console.log('Sending chat request to API server:', { 
-      url: `${API_BASE_URL}/api/chat`,
-      message: message, 
-      hasImage: !!image,
-      imageSize: image ? image.size : null,
-      imageName: image ? image.name : null,
-      hasVoice: !!voice,
-      voiceSize: voice ? voice.size : null,
-      voiceName: voice ? voice.name : null,
-      previousMessagesCount: previousMessages ? previousMessages.length : 0
-    });
-
-    // Send message to the server using the correct API URL
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    console.log('Chat response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error('Chat API error:', data);
-      throw new Error(data.error || data.message || 'Failed to send message');
-    }
-
-    return data;
+    const response = await axios.put(`${API_URL}/api/config`, config);
+    return response.data;
   } catch (error) {
-    console.error('Error sending message:', error);
-    // Check if it's a network error (likely 404 Not Found)
-    if (error.message === 'Failed to fetch') {
-      console.error('Network error - check if the server is running and the endpoint exists');
-    }
+    console.error('Error updating server config:', error);
     throw error;
   }
 };
 
 /**
- * Updates the server configuration with new settings
- * @param {Object} config - The updated configuration
- * @returns {Promise<Object>} The response from the server
+ * Update configuration on the server (alias for updateServerConfig for backward compatibility)
+ * @param {Object} config - New configuration
+ * @returns {Promise<Object>} Promise with the updated configuration
  */
-export const updateConfig = async (config) => {
-  try {
-    console.log('Updating server configuration...');
-    
-    const response = await fetch(`${API_BASE_URL}/api/config`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(config),
-    });
-    
-    if (!response.ok) {
-      console.error('Config update failed:', response.status, response.statusText);
-      const errorData = await response.json();
-      throw new Error(errorData.error || errorData.message || 'Failed to update configuration');
-    }
-    
-    const data = await response.json();
-    console.log('Configuration updated successfully');
-    return data;
-  } catch (error) {
-    console.error('Error updating configuration:', error);
-    throw error;
-  }
-};
+export const updateConfig = updateServerConfig;
