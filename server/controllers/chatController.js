@@ -17,8 +17,37 @@ class ChatController {
    */
   static async processMessage(req, res, next) {
     try {
+      // Debug logging for incoming request
+      console.log('Received chat request:', {
+        hasMessage: !!req.body.message,
+        hasImage: !!req.files?.image,
+        hasVoice: !!req.files?.voice
+      });
+
+      // Check if message is present in request body
+      if (!req.body.message) {
+        return res.status(400).json({
+          error: 'Missing message',
+          details: 'Message field is required in the request body'
+        });
+      }
+
       // Parse message data from the request
-      const messageData = JSON.parse(req.body.message);
+      let messageData;
+      try {
+        messageData = JSON.parse(req.body.message);
+        console.log('Parsed message data:', {
+          hasMessageField: !!messageData.message,
+          mcpContextLength: messageData.mcpContext?.length || 0,
+          previousMessagesLength: messageData.previousMessages?.length || 0
+        });
+      } catch (parseError) {
+        console.error('Error parsing message JSON:', parseError);
+        return res.status(400).json({
+          error: 'Invalid message format',
+          details: 'Message must be valid JSON'
+        });
+      }
       
       // Create message instance
       const message = new Message(messageData);
@@ -70,19 +99,28 @@ class ChatController {
       console.log('Total messages being sent to OpenAI:', messageContext.length);
       console.log('User message format:', Array.isArray(userMessage.content) ? 'multimodal' : 'text');
       
-      // Get response from OpenAI
-      const completion = await OpenAIService.createCompletion(messageContext);
-      
-      // Format response for client
-      const response = message.formatResponse(completion, {
-        imageFile,
-        voiceFile,
-        req
-      });
-      
-      // Return response
-      res.json(response);
+      try {
+        // Get response from OpenAI
+        const completion = await OpenAIService.createCompletion(messageContext);
+        
+        // Format response for client
+        const response = message.formatResponse(completion, {
+          imageFile,
+          voiceFile,
+          req
+        });
+        
+        // Return response
+        res.json(response);
+      } catch (apiError) {
+        console.error('OpenAI API error:', apiError.message);
+        if (apiError.response) {
+          console.error('API response:', apiError.response.data);
+        }
+        throw apiError; // Let the error handler middleware handle this
+      }
     } catch (error) {
+      console.error('Chat controller error:', error.message);
       next(error);
     }
   }

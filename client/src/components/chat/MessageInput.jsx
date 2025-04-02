@@ -11,7 +11,6 @@ import {
   ImageRegular,
   MicRegular,
 } from '@fluentui/react-icons';
-import { useChat } from '../../contexts/ChatContext';
 
 const useStyles = makeStyles({
   inputContainer: {

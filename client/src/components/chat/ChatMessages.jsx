@@ -4,7 +4,9 @@ import {
   shorthands,
   tokens,
 } from '@fluentui/react-components';
-import { useChat } from '../../contexts/ChatContext';
+// Replace useChat with imports for our specialized contexts
+import { useMessage } from '../../contexts/MessageContext';
+import { useConfiguration } from '../../contexts/ConfigurationContext';
 import { ErrorDisplay } from '../ErrorDisplay';
 import { ChatActionBar } from './ChatActionBar';
 import ChatMessage from './ChatMessage';
@@ -37,12 +39,16 @@ const useStyles = makeStyles({
     flexGrow: 1,
     ...shorthands.gap('16px'), // Consistent gap between all messages
     paddingBottom: '20px', // Extra padding at bottom for better visibility
+    overflowX: 'hidden', // Explicitly prevent horizontal overflow
   }
 });
 
 export const ChatMessages = ({ messages, error, isLoading, isInitializing }) => {
   const styles = useStyles();
-  const { handleRetry, setError, handleClearChat, handleSummarizeChat, isConfigured } = useChat();
+  // Get message-related functions from MessageContext
+  const { handleRetry, setError, handleClearChat, handleSummarizeChat } = useMessage();
+  // Get configuration state from ConfigurationContext
+  const { isConfigured } = useConfiguration();
   
   // Use our message state tracking hook
   const { retryingIds, handleRetryMessage } = useMessageStateTracking({ messages });

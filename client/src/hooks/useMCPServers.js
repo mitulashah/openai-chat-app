@@ -6,19 +6,8 @@ import { useState, useCallback } from 'react';
  * @returns {Object} MCP servers state and management functions
  */
 export const useMCPServers = (initialServers = []) => {
-  const [servers, setServers] = useState(
-    initialServers.length > 0 
-      ? initialServers 
-      : [{ 
-          id: 1, 
-          name: 'Default MCP Server', 
-          url: 'https://mcp-server.example.com', 
-          enabled: true,
-          authType: 'none',
-          authConfig: {},
-          health: 'unknown' // Keep health status property for UI
-        }]
-  );
+  // Start with an empty array instead of adding a default server
+  const [servers, setServers] = useState(initialServers);
   
   const [editingServer, setEditingServer] = useState(null);
   

@@ -9,6 +9,10 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     ...shorthands.gap('4px'),
+    overflowWrap: 'break-word',
+    wordBreak: 'break-word',
+    width: '100%', // Ensure it takes full width of parent
+    maxWidth: '100%', // Prevent exceeding parent width
   },
   messageImage: {
     maxWidth: '100%',

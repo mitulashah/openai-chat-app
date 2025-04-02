@@ -20,7 +20,8 @@ import {
   DocumentRegular,
   CodeRegular
 } from '@fluentui/react-icons';
-import { useChat } from '../../contexts/ChatContext';
+// Replace useChat with useMessage
+import { useMessage } from '../../contexts/MessageContext';
 import { exportChat } from '../../utils/Utils';
 
 const useStyles = makeStyles({
@@ -49,7 +50,8 @@ const useStyles = makeStyles({
  */
 export const ChatActionBar = ({ onClearChat, onSummarizeChat, isConfigured = true }) => {
   const styles = useStyles();
-  const { messages } = useChat();
+  // Get messages from MessageContext
+  const { messages } = useMessage();
   
   const handleExport = (format) => {
     exportChat(messages, format);

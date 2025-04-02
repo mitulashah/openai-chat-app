@@ -27,6 +27,9 @@ const useStyles = makeStyles({
     position: 'relative',
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
     border: '1px solid transparent',
+    overflowWrap: 'break-word',
+    wordBreak: 'break-word',
+    overflow: 'hidden', // Prevent overflow in any direction
   },
   userMessage: {
     backgroundColor: tokens.colorBrandBackground,

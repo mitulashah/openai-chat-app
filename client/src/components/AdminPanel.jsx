@@ -20,7 +20,8 @@ import {
 } from '@fluentui/react-components';
 import { useState } from 'react';
 import { useAzureOpenAIConfig } from '../hooks/useAzureOpenAIConfig';
-import { useChat } from '../contexts/ChatContext';
+// Replace useChat with useConfiguration
+import { useConfiguration } from '../contexts/ConfigurationContext';
 import { TextSetting } from './settings/TextSetting';
 import { TextAreaSetting } from './settings/TextAreaSetting';
 import { SliderSetting } from './settings/SliderSetting';
@@ -76,8 +77,8 @@ const useStyles = makeStyles({
  */
 export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
   const styles = useStyles();
-  // Get the updateMemorySettings function from ChatContext
-  const { updateMemorySettings } = useChat();
+  // Get the updateMemorySettings function from ConfigurationContext instead of ChatContext
+  const { updateMemorySettings } = useConfiguration();
   
   const { 
     config, 
@@ -88,7 +89,7 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
     isLoading
   } = useAzureOpenAIConfig({ 
     onConfigSaved: (savedConfig) => {
-      // First, update the memory settings in the ChatContext
+      // First, update the memory settings in the ConfigurationContext
       if (updateMemorySettings) {
         updateMemorySettings({
           memoryMode: savedConfig.memoryMode,
@@ -229,6 +230,7 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
                         Control how much conversation history is sent to the model
                       </Text>
                       
+
                       <RadioGroup 
                         className={styles.radioGroup}
                         value={config.memoryMode}

@@ -6,9 +6,16 @@ import { Footer } from './components/chat/Footer';
 import { AdminPanel } from './components/AdminPanel';
 import { ErrorDisplay } from './components/ErrorDisplay';
 import { useTheme } from './hooks/useTheme';
-import { ChatProvider, useChat } from './contexts/ChatContext';
+// Update the import to use our new context structure
+import { ChatProvider } from './contexts/ChatContext';
+import { MCPProvider } from './contexts/MCPContext';
+import { useMessage } from './contexts/MessageContext';
+import { useConfiguration } from './contexts/ConfigurationContext';
+import { useUIState } from './contexts/UIStateContext';
+import { useToken } from './contexts/TokenContext';
 import { makeStyles } from '@fluentui/react-components';
 import { Text } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
 
 const useStyles = makeStyles({
   root: {
@@ -40,6 +47,19 @@ const useStyles = makeStyles({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 1,
     pointerEvents: 'none', // Allow clicks to pass through
+  },
+  autoInitBanner: {
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+    color: tokens.colorPaletteGreenForeground1,
+    padding: '8px 16px',
+    textAlign: 'center',
+    position: 'relative',
+    zIndex: 2,
+    animation: 'fadeOut 1s ease-in-out 5s forwards',
+    '@keyframes fadeOut': {
+      '0%': { opacity: 1 },
+      '100%': { opacity: 0, height: 0, padding: 0 }
+    }
   }
 });
 
@@ -57,42 +77,72 @@ function App() {
   
   return (
     <FluentProvider theme={currentTheme}>
-      <ChatProvider>
-        <ChatContent 
-          currentTheme={currentTheme}
-          currentThemeName={currentThemeName}
-          handleThemeChange={handleThemeChange}
-        />
-      </ChatProvider>
+      <MCPProvider>
+        <ChatProvider>
+          <ChatContent 
+            currentTheme={currentTheme}
+            currentThemeName={currentThemeName}
+            handleThemeChange={handleThemeChange}
+          />
+        </ChatProvider>
+      </MCPProvider>
     </FluentProvider>
   );
 }
 
-// Main content component that uses the chat context
+// Main content component that uses our specialized contexts
 const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
   const styles = useStyles();
+  const [showAutoInitBanner, setShowAutoInitBanner] = useState(false);
+  
+  // Get message-related state and functions from MessageContext
   const { 
     messages, 
     input, 
     setInput, 
     error, 
     setError, 
-    isConfigured, 
-    refreshConfiguration,
+    handleSend, 
+    handleClearChat,
+    isLoading,
     selectedImage,
     setSelectedImage,
     selectedVoice,
     setSelectedVoice,
-    isAdminPanelOpen, 
-    setIsAdminPanelOpen, 
-    handleSend, 
-    handleClearChat,
-    isLoading,
-    configLoading,
-    memorySettings,
-    tokenUsage,
     isInitializing
-  } = useChat();
+  } = useMessage();
+  
+  // Get configuration state from ConfigurationContext
+  const {
+    isConfigured,
+    configLoading,
+    refreshConfiguration,
+    memorySettings,
+    autoInitialized
+  } = useConfiguration();
+  
+  // Get UI-related state from UIStateContext
+  const {
+    isAdminPanelOpen,
+    setIsAdminPanelOpen
+  } = useUIState();
+  
+  // Get token usage metrics from TokenContext
+  const {
+    tokenUsage
+  } = useToken();
+
+  // Show auto-initialization banner when connection is automatically established
+  useEffect(() => {
+    if (autoInitialized && isConfigured) {
+      setShowAutoInitBanner(true);
+      // Hide the banner after 6 seconds (animation takes 5s plus 1s buffer)
+      const timer = setTimeout(() => {
+        setShowAutoInitBanner(false);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoInitialized, isConfigured]);
 
   // Check if we should show any error/warning message
   const showWarningOrError = (!isConfigured && !configLoading) || error;
@@ -105,6 +155,12 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
         appTitle={APP_CONFIG.title}
         appVersion={APP_CONFIG.version}
       />
+      
+      {showAutoInitBanner && (
+        <div className={styles.autoInitBanner}>
+          <Text>Configuration found and connection automatically initialized.</Text>
+        </div>
+      )}
       
       <div className={styles.chatContent}>
         {!isConfigured && !configLoading && (
