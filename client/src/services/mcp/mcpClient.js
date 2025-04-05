@@ -11,9 +11,9 @@ import { MCPClientBase } from './MCPClientBase';
 import { MCPJsonRpcClient } from './MCPJsonRpcClient';
 import { MCPRestClient } from './MCPRestClient';
 import { MCPClientManager } from './MCPClientManager';
-import { MCP_ERROR_CODES, MCPError } from './mcpErrors';
+import { MCP_ERROR_CODES, MCPError } from './mcpErrors.js';
 import { createJsonRpcRequest, createJsonRpcNotification } from './jsonRpc';
-import { createMCPClient, ClientProtocol } from './mcpClientFactory';
+import { createMCPClient, ClientProtocol } from './mcpClientFactory.js';
 
 // Re-export all MCP-related classes and utilities
 export {

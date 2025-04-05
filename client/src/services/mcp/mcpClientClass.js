@@ -9,9 +9,9 @@
  */
 
 import axios from 'axios';
-import { MCP_ERROR_CODES, MCPError } from './mcpErrors';
-import { createJsonRpcRequest, createJsonRpcNotification } from './jsonRpc';
-import { parseMCPError } from './mcpErrors';
+import { MCP_ERROR_CODES, MCPError } from './mcpError.js';
+import { createJsonRpcRequest, createJsonRpcNotification } from './jsonRpc.js';
+import { parseMCPError } from './mcpErrors.js';
 
 /**
  * MCP Client class for interacting with MCP servers

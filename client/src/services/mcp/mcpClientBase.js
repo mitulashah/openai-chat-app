@@ -8,7 +8,7 @@
  */
 
 import axios from 'axios';
-import { MCP_ERROR_CODES, MCPError } from './mcpErrors';
+import { MCP_ERROR_CODES, MCPError } from './mcpErrors.js';
 
 /**
  * Abstract base class for MCP clients

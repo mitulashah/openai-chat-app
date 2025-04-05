@@ -6,7 +6,7 @@
  * - Getting capabilities of MCP servers
  */
 
-import { MCPError } from '../mcpErrors';
+import { MCPError } from '../mcpErrors.js';
 
 export class ServerInfoModule {
   /**

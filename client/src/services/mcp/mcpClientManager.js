@@ -8,12 +8,12 @@
  * - Provides consistent error handling and response formatting
  */
 
-import { MCPError, MCP_ERROR_CODES } from './mcpErrors';
-import { createMCPClient, ClientProtocol } from './mcpClientFactory';
-import { ClientOperationsModule } from './modules/ClientOperationsModule';
-import { ContextServiceModule } from './modules/ContextServiceModule';
-import { ToolsServiceModule } from './modules/ToolsServiceModule';
-import { ServerInfoModule } from './modules/ServerInfoModule';
+import { MCPError, MCP_ERROR_CODES } from './mcpErrors.js';
+import { createMCPClient, ClientProtocol } from './mcpClientFactory.js';
+import { ClientOperationsModule } from './modules/ClientOperationsModule.js';
+import { ContextServiceModule } from './modules/ContextServiceModule.js';
+import { ToolsServiceModule } from './modules/ToolsServiceModule.js';
+import { ServerInfoModule } from './modules/ServerInfoModule.js';
 
 /**
  * MCP Client Manager - Manages multiple MCP client instances

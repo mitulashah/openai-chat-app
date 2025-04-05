@@ -7,7 +7,7 @@
  * - Client filtering based on capabilities or state
  */
 
-import { MCPError, MCP_ERROR_CODES } from '../mcpErrors';
+import { MCPError, MCP_ERROR_CODES } from '../mcpErrors.js';
 
 export class ClientOperationsModule {
   /**

@@ -6,7 +6,7 @@
  * - Retrieving prompt suggestions from MCP servers
  */
 
-import { MCPError } from '../mcpErrors';
+import { MCPError } from '../mcpErrors.js';
 
 export class ContextServiceModule {
   /**

@@ -7,8 +7,8 @@
  * - Implements simplified initialization flow
  */
 
-import { MCPClientBase } from './MCPClientBase';
-import { MCP_ERROR_CODES, MCPError } from './mcpErrors';
+import { MCPClientBase } from './MCPClientBase.js';
+import { MCP_ERROR_CODES, MCPError } from './mcpErrors.js';
 
 /**
  * MCP REST API Client Implementation

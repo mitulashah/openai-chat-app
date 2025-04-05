@@ -6,7 +6,7 @@
  * - Executing tools on specific MCP servers
  */
 
-import { MCPError, MCP_ERROR_CODES } from '../mcpErrors';
+import { MCPError, MCP_ERROR_CODES } from '../mcpErrors.js';
 
 export class ToolsServiceModule {
   /**

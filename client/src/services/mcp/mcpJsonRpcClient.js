@@ -7,9 +7,9 @@
  * - Implements the initialization flow with fallbacks
  */
 
-import { MCPClientBase } from './MCPClientBase';
-import { MCP_ERROR_CODES, MCPError } from './mcpErrors';
-import { createJsonRpcRequest, createJsonRpcNotification } from './jsonRpc';
+import { MCPClientBase } from './MCPClientBase.js';
+import { MCP_ERROR_CODES, MCPError } from './mcpErrors.js';
+import { createJsonRpcRequest, createJsonRpcNotification } from './jsonRpc.js';
 
 /**
  * MCP JSON-RPC Client Implementation

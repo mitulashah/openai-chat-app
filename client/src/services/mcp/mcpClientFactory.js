@@ -7,8 +7,8 @@
  * - Supporting protocol auto-detection
  */
 
-import { MCPJsonRpcClient } from './MCPJsonRpcClient';
-import { MCPRestClient } from './MCPRestClient';
+import { MCPJsonRpcClient } from './MCPJsonRpcClient.js';
+import { MCPRestClient } from './MCPRestClient.js';
 
 /**
  * Client protocol types
