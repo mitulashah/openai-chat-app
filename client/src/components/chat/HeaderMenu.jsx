@@ -37,7 +37,7 @@ export const HeaderMenu = ({ onOpenSettings, onAbout }) => {
         <MenuPopover>
           <MenuList>
             <MenuItem icon={<SettingsRegular />} onClick={onOpenSettings}>
-              Settings
+              Model Settings
             </MenuItem>
             <MenuItem icon={<DataUsageRegular />} onClick={handleOpenMCPConfig}>
               MCP Configuration

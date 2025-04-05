@@ -20,13 +20,14 @@ class Config {
     this.apiVersion = initialConfig.apiVersion || '2023-05-15';
     this.maxTokens = initialConfig.maxTokens !== undefined ? initialConfig.maxTokens : 800;
     
-    // New Azure AI Agent service settings
+    // Azure AI Agent service settings - simplified to essential fields only
     this.useAiAgentService = initialConfig.useAiAgentService !== undefined ? initialConfig.useAiAgentService : false;
     this.aiAgentEndpoint = initialConfig.aiAgentEndpoint || '';
     this.aiAgentProjectName = initialConfig.aiAgentProjectName || '';
+    this.aiAgentId = initialConfig.aiAgentId || '';
+    
+    // Optional reference fields - not used in API calls
     this.aiAgentName = initialConfig.aiAgentName || '';
-    this.aiAgentInstructions = initialConfig.aiAgentInstructions || this.systemMessage;
-    this.aiAgentModel = initialConfig.aiAgentModel || 'gpt-4o-mini';
   }
 
   /**
@@ -37,7 +38,7 @@ class Config {
     const errors = [];
     
     if (this.useAiAgentService) {
-      // Validate Azure AI Agent service settings
+      // Validate Azure AI Agent service settings - only essential fields
       if (!this.aiAgentEndpoint) {
         errors.push({ field: 'aiAgentEndpoint', message: 'AI Agent Endpoint is required' });
       }
@@ -46,12 +47,8 @@ class Config {
         errors.push({ field: 'aiAgentProjectName', message: 'AI Agent Project Name is required' });
       }
       
-      if (!this.aiAgentName) {
-        errors.push({ field: 'aiAgentName', message: 'AI Agent Name is required' });
-      }
-
-      if (!this.aiAgentModel) {
-        errors.push({ field: 'aiAgentModel', message: 'AI Agent Model is required' });
+      if (!this.aiAgentId) {
+        errors.push({ field: 'aiAgentId', message: 'AI Agent ID is required' });
       }
     } else {
       // Validate Azure OpenAI settings
@@ -206,16 +203,12 @@ class Config {
       this.aiAgentProjectName = newConfig.aiAgentProjectName;
     }
     
-    if (newConfig.aiAgentName !== undefined) {
-      this.aiAgentName = newConfig.aiAgentName;
-    }
-    
-    if (newConfig.aiAgentInstructions !== undefined) {
-      this.aiAgentInstructions = newConfig.aiAgentInstructions;
+    if (newConfig.aiAgentId !== undefined) {
+      this.aiAgentId = newConfig.aiAgentId;
     }
 
-    if (newConfig.aiAgentModel !== undefined) {
-      this.aiAgentModel = newConfig.aiAgentModel;
+    if (newConfig.aiAgentName !== undefined) {
+      this.aiAgentName = newConfig.aiAgentName;
     }
     
     return this;
@@ -227,7 +220,7 @@ class Config {
    */
   isConfigured() {
     if (this.useAiAgentService) {
-      return Boolean(this.aiAgentEndpoint && this.aiAgentProjectName && this.aiAgentName);
+      return Boolean(this.aiAgentEndpoint && this.aiAgentProjectName && this.aiAgentId);
     }
     return Boolean(this.apiKey && this.endpoint && this.deploymentName);
   }
@@ -253,9 +246,8 @@ const config = new Config({
   useAiAgentService: process.env.USE_AI_AGENT_SERVICE === 'true',
   aiAgentEndpoint: process.env.AI_AGENT_ENDPOINT || '',
   aiAgentProjectName: process.env.AI_AGENT_PROJECT_NAME || '',
-  aiAgentName: process.env.AI_AGENT_NAME || '',
-  aiAgentInstructions: process.env.AI_AGENT_INSTRUCTIONS || '',
-  aiAgentModel: process.env.AI_AGENT_MODEL || 'gpt-4o-mini'
+  aiAgentId: process.env.AI_AGENT_ID || '',
+  aiAgentName: process.env.AI_AGENT_NAME || ''
 });
 
 module.exports = {

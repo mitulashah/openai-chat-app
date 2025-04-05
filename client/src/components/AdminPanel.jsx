@@ -16,7 +16,8 @@ import {
   Checkbox,
   Tab,
   TabList,
-  Divider
+  Divider,
+  Switch
 } from '@fluentui/react-components';
 import { useState } from 'react';
 import { useAzureOpenAIConfig } from '../hooks/useAzureOpenAIConfig';
@@ -140,25 +141,10 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogSurface className={styles.wideSurface}>
-        <DialogTitle>Settings</DialogTitle>
+        <DialogTitle>Model Settings</DialogTitle>
         <DialogBody>
           <DialogContent>
             <div className={styles.form}>
-              <div className={styles.settingContainer}>
-                <Label className={styles.settingLabel}>Service Type</Label>
-                <Text className={styles.settingDescription}>
-                  Select which Azure AI service to use for chat interactions
-                </Text>
-                <RadioGroup 
-                  className={styles.radioGroup}
-                  value={config.useAiAgentService ? "agent" : "openai"}
-                  onChange={(e, data) => setConfigValue('useAiAgentService', data.value === "agent")}
-                >
-                  <Radio value="openai" label="Azure OpenAI" />
-                  <Radio value="agent" label="Azure AI Agent Service" />
-                </RadioGroup>
-              </div>
-
               <div className={styles.tabContainer}>
                 <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
                   <Tab id="azure-openai-tab" value="azure-openai">Azure OpenAI</Tab>
@@ -254,30 +240,20 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
                       />
                       
                       <TextSetting
-                        id="aiAgentName"
-                        label="Agent Name"
-                        description="The name of your AI agent in Azure AI Foundry"
-                        value={config.aiAgentName}
-                        onChange={handleInputChange('aiAgentName')}
+                        id="aiAgentId"
+                        label="Agent ID"
+                        description="The unique identifier of your AI agent (usually starts with 'asst_')"
+                        value={config.aiAgentId}
+                        onChange={handleInputChange('aiAgentId')}
                         disabled={!config.useAiAgentService}
                       />
                       
                       <TextSetting
-                        id="aiAgentModel"
-                        label="Model Name"
-                        description="The AI model to use (e.g., gpt-4o-mini, llama-3.1, etc.)"
-                        value={config.aiAgentModel}
-                        onChange={handleInputChange('aiAgentModel')}
-                        disabled={!config.useAiAgentService}
-                      />
-                      
-                      <TextAreaSetting
-                        id="aiAgentInstructions"
-                        label="Agent Instructions"
-                        description="Instructions that define the agent's behavior"
-                        value={config.aiAgentInstructions}
-                        onChange={handleInputChange('aiAgentInstructions')}
-                        rows={3}
+                        id="aiAgentName"
+                        label="Agent Name (Optional)"
+                        description="Optional display name for reference only"
+                        value={config.aiAgentName}
+                        onChange={handleInputChange('aiAgentName')}
                         disabled={!config.useAiAgentService}
                       />
                     </div>
@@ -388,13 +364,41 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
             </div>
           </DialogContent>
         </DialogBody>
-        <DialogActions>
-          <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button appearance="primary" onClick={saveConfig} disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Save'}
-          </Button>
+        <DialogActions style={{ 
+          padding: '16px 0', // Removed horizontal padding, kept vertical padding
+          display: 'flex', 
+          width: '100%', 
+          maxWidth: '650px' 
+        }}>
+          {/* Left-aligned toggle switch */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            backgroundColor: tokens.colorNeutralBackground3, 
+            borderRadius: '6px',
+            height: '40px',
+            padding: '0 16px',
+            marginLeft: 0,
+            marginRight: 'auto'  /* Push everything else to the right */
+          }}>
+            <Text weight="semibold">Azure OpenAI</Text>
+            <Switch 
+              checked={config.useAiAgentService}
+              onChange={(e, data) => setConfigValue('useAiAgentService', data.checked)}
+            />
+            <Text weight="semibold">AI Agent Service</Text>
+          </div>
+          
+          {/* Right-aligned buttons */}
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button appearance="primary" onClick={saveConfig} disabled={isLoading}>
+              {isLoading ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
         </DialogActions>
       </DialogSurface>
     </Dialog>

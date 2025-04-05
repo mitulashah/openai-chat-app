@@ -39,7 +39,7 @@ export const ConfigurationProvider = ({ children }) => {
         }
 
         if ((localConfig.useAiAgentService && localConfig.apiKey && localConfig.aiAgentEndpoint && 
-           localConfig.aiAgentProjectName && localConfig.aiAgentName) || 
+           localConfig.aiAgentProjectName && localConfig.aiAgentId) || 
            (!localConfig.useAiAgentService && localConfig.apiKey && localConfig.endpoint && localConfig.deploymentName)) {
           
           console.log('Found valid configuration, automatically initializing connection');

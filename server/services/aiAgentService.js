@@ -212,7 +212,7 @@ class AIAgentService {
       const initialRun = await client.agents.createRun({
         projectName: config.aiAgentProjectName,
         threadId: thread.id,
-        agentId: config.aiAgentName,
+        agentId: config.aiAgentId,  // Changed from config.aiAgentName to config.aiAgentId
         temperature: config.temperature,
         topP: config.topP,
         maxTokens: config.maxTokens,
