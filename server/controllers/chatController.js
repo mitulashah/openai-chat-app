@@ -4,6 +4,7 @@
 const Message = require('../models/Message');
 const { config } = require('../models/Config');
 const OpenAIService = require('../services/openaiService');
+const AIAgentService = require('../services/aiAgentService');
 
 /**
  * Controller for chat message endpoints
@@ -62,11 +63,11 @@ class ChatController {
         });
       }
       
-      // Check if OpenAI is configured
+      // Check if Azure service is configured
       if (!config.isConfigured()) {
         return res.status(400).json({
-          error: 'Azure OpenAI not configured',
-          details: 'Please configure Azure OpenAI in the settings'
+          error: 'Azure service not configured',
+          details: 'Please configure Azure OpenAI or AI Agent Service in the settings'
         });
       }
       
@@ -87,21 +88,37 @@ class ChatController {
       // Add user message to context
       messageContext.push(userMessage);
       
-      // Add MCP context if available
-      if (messageData.mcpContext && Array.isArray(messageData.mcpContext) && messageData.mcpContext.length > 0) {
+      // Extract MCP servers and context
+      let mcpServers = [];
+      let mcpContext = [];
+      
+      if (messageData.mcpServers && Array.isArray(messageData.mcpServers)) {
+        mcpServers = messageData.mcpServers;
+      }
+      
+      if (messageData.mcpContext && Array.isArray(messageData.mcpContext)) {
+        mcpContext = messageData.mcpContext;
         // Add MCP context messages to the context
-        messageContext.push(...messageData.mcpContext);
-        console.log(`Added ${messageData.mcpContext.length} MCP context messages from:`, 
-          messageData.mcpContext.map(ctx => ctx.source).join(', '));
+        messageContext.push(...mcpContext);
+        console.log(`Added ${mcpContext.length} MCP context messages from:`, 
+          mcpContext.map(ctx => ctx.source).join(', '));
       }
       
       console.log('Memory mode:', config.memoryMode);
-      console.log('Total messages being sent to OpenAI:', messageContext.length);
+      console.log('Total messages being sent to AI service:', messageContext.length);
       console.log('User message format:', Array.isArray(userMessage.content) ? 'multimodal' : 'text');
       
       try {
-        // Get response from OpenAI
-        const completion = await OpenAIService.createCompletion(messageContext);
+        let completion;
+        
+        // Use appropriate service based on configuration
+        if (config.useAiAgentService) {
+          console.log('Using Azure AI Agent Service with MCP tool calling');
+          completion = await AIAgentService.processConversation(messageContext, mcpServers);
+        } else {
+          console.log('Using Azure OpenAI Service');
+          completion = await OpenAIService.createCompletion(messageContext);
+        }
         
         // Format response for client
         const response = message.formatResponse(completion, {
@@ -113,7 +130,7 @@ class ChatController {
         // Return response
         res.json(response);
       } catch (apiError) {
-        console.error('OpenAI API error:', apiError.message);
+        console.error('AI service API error:', apiError.message);
         if (apiError.response) {
           console.error('API response:', apiError.response.data);
         }

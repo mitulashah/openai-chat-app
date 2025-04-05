@@ -13,7 +13,8 @@ const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3
 export const checkConfiguration = async () => {
   try {
     const config = await getServerConfig();
-    return Boolean(config && config.endpoint && config.deploymentName);
+    return Boolean(config && ((config.useAiAgentService && config.apiKey && config.aiAgentEndpoint) || 
+                             (!config.useAiAgentService && config.apiKey && config.endpoint && config.deploymentName)));
   } catch (error) {
     console.error('Error checking configuration:', error);
     return false;
@@ -69,7 +70,20 @@ export const sendMessage = async (messageInput, fileOrHistory, voiceOrOptions, p
 
     // First, try to get relevant context from MCP servers
     let mcpContext = [];
+    let mcpServers = [];
+    
     try {
+      // Get MCP server configurations for tool calling
+      const allMcpClients = mcpClientManager.getAllClients();
+      mcpServers = allMcpClients.map(client => ({
+        id: client.id,
+        name: client.name,
+        url: client.url,
+        enabled: client.enabled,
+        capabilities: client.serverCapabilities || {}
+      }));
+      
+      // Get context from MCP servers
       const mcpResults = await mcpClientManager.getContextFromAll({
         messages: [...previousMessages, { role: 'user', content: message.message }], // Format for MCP
         parameters: {
@@ -112,13 +126,15 @@ export const sendMessage = async (messageInput, fileOrHistory, voiceOrOptions, p
     const messageToSend = {
       ...message,
       previousMessages: formattedPreviousMessages, // Use formatted messages
-      mcpContext // Include MCP context with the message
+      mcpContext, // Include MCP context with the message
+      mcpServers  // Include MCP server configurations for tool calling
     };
     
     console.log('Sending message to API:', {
       messageContent: message.message?.substring(0, 50) + '...',
       previousMessagesCount: formattedPreviousMessages.length,
-      mcpContextCount: mcpContext.length
+      mcpContextCount: mcpContext.length,
+      mcpServersCount: mcpServers.length
     });
     
     formData.append('message', JSON.stringify(messageToSend));

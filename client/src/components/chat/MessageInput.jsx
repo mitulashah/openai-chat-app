@@ -2,52 +2,13 @@ import React, { useRef, useState, useEffect } from 'react';
 import {
   Button,
   Input,
-  makeStyles,
-  shorthands,
-  tokens,
 } from '@fluentui/react-components';
 import { 
   SendRegular,
   ImageRegular,
   MicRegular,
 } from '@fluentui/react-icons';
-
-const useStyles = makeStyles({
-  inputContainer: {
-    display: 'flex',
-    padding: '20px',
-    ...shorthands.gap('10px'),
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-    alignItems: 'center',
-  },
-  input: {
-    flexGrow: 1,
-  },
-  imageButtonActive: {
-    backgroundColor: tokens.colorBrandBackgroundHover,
-    color: tokens.colorNeutralForegroundOnBrand,
-  },
-  voiceButtonActive: {
-    backgroundColor: tokens.colorStatusDangerBackground1,
-    color: tokens.colorNeutralForegroundOnBrand,
-  },
-  recordingActive: {
-    animation: {
-      '0%': {
-        backgroundColor: tokens.colorStatusDangerBackground1,
-      },
-      '50%': {
-        backgroundColor: tokens.colorStatusDangerBackground2,
-      },
-      '100%': {
-        backgroundColor: tokens.colorStatusDangerBackground1,
-      }
-    },
-    animationDuration: '1.5s',
-    animationIterationCount: 'infinite',
-    color: tokens.colorNeutralForegroundOnBrand,
-  }
-});
+import { useInputStyles } from '../../styles/components/chat/inputStyles';
 
 export const MessageInput = ({ 
   input, 
@@ -61,7 +22,7 @@ export const MessageInput = ({
   setError,
   isLoading
 }) => {
-  const styles = useStyles();
+  const styles = useInputStyles();
   const fileInputRef = useRef(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);

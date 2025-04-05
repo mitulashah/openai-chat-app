@@ -3,7 +3,7 @@ import { getServerConfig, updateConfig } from '../services/chatService';
 import { loadConfig, saveConfig } from '../services/storageService';
 
 /**
- * Hook for managing Azure OpenAI configuration
+ * Hook for managing Azure AI service configuration (OpenAI and AI Agent)
  * @param {Object} options - Hook options
  * @param {Function} [options.onConfigSaved] - Callback for when config is saved
  * @param {Function} [options.onOpenChange] - Callback for dialog open state changes
@@ -12,6 +12,7 @@ import { loadConfig, saveConfig } from '../services/storageService';
 export const useAzureOpenAIConfig = (options = {}) => {
   // Default config values
   const defaultConfig = {
+    // Azure OpenAI settings
     apiKey: '',
     endpoint: '',
     deploymentName: '',
@@ -23,6 +24,14 @@ export const useAzureOpenAIConfig = (options = {}) => {
     systemMessage: 'You are a helpful assistant.',
     apiVersion: '2023-05-15',
     maxTokens: 800,
+    
+    // Azure AI Agent service settings
+    useAiAgentService: false,
+    aiAgentEndpoint: '',
+    aiAgentProjectName: '',
+    aiAgentName: '',
+    aiAgentInstructions: 'You are a helpful assistant.',
+    aiAgentModel: 'gpt-4o-mini'
   };
 
   // State for configuration
@@ -94,6 +103,7 @@ export const useAzureOpenAIConfig = (options = {}) => {
           
           return {
             ...prev,
+            // Azure OpenAI settings
             endpoint: data.endpoint || prev.endpoint,
             deploymentName: data.deploymentName || prev.deploymentName,
             temperature: data.temperature !== undefined ? data.temperature : prev.temperature,
@@ -105,6 +115,14 @@ export const useAzureOpenAIConfig = (options = {}) => {
             systemMessage: data.systemMessage || prev.systemMessage,
             apiVersion: data.apiVersion || prev.apiVersion,
             maxTokens: data.maxTokens !== undefined ? data.maxTokens : prev.maxTokens,
+            
+            // Azure AI Agent service settings
+            useAiAgentService: data.useAiAgentService !== undefined ? data.useAiAgentService : prev.useAiAgentService,
+            aiAgentEndpoint: data.aiAgentEndpoint || prev.aiAgentEndpoint,
+            aiAgentProjectName: data.aiAgentProjectName || prev.aiAgentProjectName,
+            aiAgentName: data.aiAgentName || prev.aiAgentName,
+            aiAgentInstructions: data.aiAgentInstructions || prev.aiAgentInstructions,
+            aiAgentModel: data.aiAgentModel || prev.aiAgentModel
           };
         });
         console.log('Synchronized config with server');
@@ -128,12 +146,21 @@ export const useAzureOpenAIConfig = (options = {}) => {
     try {
       setIsLoading(true);
       
-      // Validate required fields
-      if (!config.apiKey || !config.endpoint || !config.deploymentName) {
-        setError('Please fill in all required fields');
-        clearStatusMessage();
-        setIsLoading(false);
-        return;
+      // Validate required fields based on selected service
+      if (config.useAiAgentService) {
+        if (!config.apiKey || !config.aiAgentEndpoint || !config.aiAgentProjectName || !config.aiAgentName) {
+          setError('Please fill in all required Azure AI Agent fields');
+          clearStatusMessage();
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        if (!config.apiKey || !config.endpoint || !config.deploymentName) {
+          setError('Please fill in all required Azure OpenAI fields');
+          clearStatusMessage();
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Save to localStorage using storageService

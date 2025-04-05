@@ -1,5 +1,5 @@
 import { Label, Slider, Text } from '@fluentui/react-components';
-import { useSettingsStyles } from './SettingsStyles';
+import { useSettingsStyles } from '../../styles/components/settings/settingsStyles';
 
 /**
  * A reusable component for slider settings

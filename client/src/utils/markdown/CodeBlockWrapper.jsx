@@ -1,61 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { makeStyles } from '@fluentui/react-components';
 import { CopyButton } from './CopyButton';
 import { PreviewButton } from './PreviewButton';
 import { MarkdownPreview } from './MarkdownPreview';
-
-const useStyles = makeStyles({
-  codeBlockWrapper: {
-    position: 'relative',
-    backgroundColor: '#2d3250', // Bluish-tinted Dracula background color
-    borderRadius: '4px',
-    margin: '8px 0',
-    overflow: 'hidden', // Ensure content doesn't overflow the border radius
-    transition: 'background-color 0.3s ease',
-  },
-  codeBlockContainer: {
-    position: 'relative',
-    '&:hover': {
-      '& > button': {
-        opacity: 1,
-      }
-    }
-  },
-  codeView: {
-    position: 'relative',
-    display: 'block',
-    transition: 'opacity 0.3s ease',
-  },
-  previewView: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 0,
-    visibility: 'hidden',
-    transition: 'opacity 0.3s ease, visibility 0.3s ease',
-    zIndex: 0,
-  },
-  previewActive: {
-    opacity: 1,
-    visibility: 'visible',
-    zIndex: 1,
-  },
-  codeActive: {
-    opacity: 1,
-    visibility: 'visible',
-    zIndex: 1,
-  },
-  codeInactive: {
-    opacity: 0,
-    visibility: 'hidden',
-    zIndex: 0,
-  },
-  previewMode: {
-    backgroundColor: '#f8f9fa',
-  },
-});
+import { useMarkdownStyles } from '../../styles/components/markdown/markdownStyles';
 
 // Generate a unique hash for the content to use as an identifier
 const generateContentHash = (content) => {
@@ -81,7 +28,7 @@ const generateContentHash = (content) => {
  * @returns {JSX.Element}
  */
 export const CodeBlockWrapper = ({ children, content, isMarkdown = false }) => {
-  const styles = useStyles();
+  const styles = useMarkdownStyles();
   const wrapperRef = useRef(null);
   const [height, setHeight] = useState('auto');
   

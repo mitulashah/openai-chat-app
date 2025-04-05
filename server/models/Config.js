@@ -1,10 +1,11 @@
 /**
- * Config.js - Model for Azure OpenAI configuration
- * Manages the configuration for the Azure OpenAI service
+ * Config.js - Model for Azure AI service configuration
+ * Manages the configuration for Azure OpenAI and Azure AI Agent services
  */
 
 class Config {
   constructor(initialConfig = {}) {
+    // Existing Azure OpenAI settings
     this.apiKey = initialConfig.apiKey || '';
     this.endpoint = initialConfig.endpoint || '';
     this.deploymentName = initialConfig.deploymentName || '';
@@ -18,6 +19,14 @@ class Config {
     this.visionModel = initialConfig.visionModel || '';
     this.apiVersion = initialConfig.apiVersion || '2023-05-15';
     this.maxTokens = initialConfig.maxTokens !== undefined ? initialConfig.maxTokens : 800;
+    
+    // New Azure AI Agent service settings
+    this.useAiAgentService = initialConfig.useAiAgentService !== undefined ? initialConfig.useAiAgentService : false;
+    this.aiAgentEndpoint = initialConfig.aiAgentEndpoint || '';
+    this.aiAgentProjectName = initialConfig.aiAgentProjectName || '';
+    this.aiAgentName = initialConfig.aiAgentName || '';
+    this.aiAgentInstructions = initialConfig.aiAgentInstructions || this.systemMessage;
+    this.aiAgentModel = initialConfig.aiAgentModel || 'gpt-4o-mini';
   }
 
   /**
@@ -27,17 +36,37 @@ class Config {
   validate() {
     const errors = [];
     
-    // Check required fields
-    if (!this.apiKey) {
-      errors.push({ field: 'apiKey', message: 'API Key is required' });
-    }
-    
-    if (!this.endpoint) {
-      errors.push({ field: 'endpoint', message: 'Endpoint is required' });
-    }
-    
-    if (!this.deploymentName) {
-      errors.push({ field: 'deploymentName', message: 'Deployment Name is required' });
+    if (this.useAiAgentService) {
+      // Validate Azure AI Agent service settings
+      if (!this.aiAgentEndpoint) {
+        errors.push({ field: 'aiAgentEndpoint', message: 'AI Agent Endpoint is required' });
+      }
+      
+      if (!this.aiAgentProjectName) {
+        errors.push({ field: 'aiAgentProjectName', message: 'AI Agent Project Name is required' });
+      }
+      
+      if (!this.aiAgentName) {
+        errors.push({ field: 'aiAgentName', message: 'AI Agent Name is required' });
+      }
+
+      if (!this.aiAgentModel) {
+        errors.push({ field: 'aiAgentModel', message: 'AI Agent Model is required' });
+      }
+    } else {
+      // Validate Azure OpenAI settings
+      // Check required fields
+      if (!this.apiKey) {
+        errors.push({ field: 'apiKey', message: 'API Key is required' });
+      }
+      
+      if (!this.endpoint) {
+        errors.push({ field: 'endpoint', message: 'Endpoint is required' });
+      }
+      
+      if (!this.deploymentName) {
+        errors.push({ field: 'deploymentName', message: 'Deployment Name is required' });
+      }
     }
     
     // Validate temperature
@@ -115,6 +144,7 @@ class Config {
    * @returns {Config} Updated config instance
    */
   update(newConfig) {
+    // Update existing Azure OpenAI settings
     if (newConfig.apiKey !== undefined) {
       this.apiKey = newConfig.apiKey;
     }
@@ -163,6 +193,31 @@ class Config {
       this.maxTokens = parseInt(newConfig.maxTokens);
     }
     
+    // Update Azure AI Agent service settings
+    if (newConfig.useAiAgentService !== undefined) {
+      this.useAiAgentService = newConfig.useAiAgentService;
+    }
+    
+    if (newConfig.aiAgentEndpoint !== undefined) {
+      this.aiAgentEndpoint = newConfig.aiAgentEndpoint;
+    }
+    
+    if (newConfig.aiAgentProjectName !== undefined) {
+      this.aiAgentProjectName = newConfig.aiAgentProjectName;
+    }
+    
+    if (newConfig.aiAgentName !== undefined) {
+      this.aiAgentName = newConfig.aiAgentName;
+    }
+    
+    if (newConfig.aiAgentInstructions !== undefined) {
+      this.aiAgentInstructions = newConfig.aiAgentInstructions;
+    }
+
+    if (newConfig.aiAgentModel !== undefined) {
+      this.aiAgentModel = newConfig.aiAgentModel;
+    }
+    
     return this;
   }
   
@@ -171,12 +226,16 @@ class Config {
    * @returns {boolean} Whether configuration has required fields
    */
   isConfigured() {
+    if (this.useAiAgentService) {
+      return Boolean(this.aiAgentEndpoint && this.aiAgentProjectName && this.aiAgentName);
+    }
     return Boolean(this.apiKey && this.endpoint && this.deploymentName);
   }
 }
 
 // Create the singleton instance from environment variables
 const config = new Config({
+  // Azure OpenAI settings
   apiKey: process.env.AZURE_OPENAI_API_KEY || '',
   endpoint: process.env.AZURE_OPENAI_ENDPOINT || '',
   deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT_NAME || '',
@@ -189,6 +248,14 @@ const config = new Config({
   visionModel: process.env.AZURE_OPENAI_VISION_MODEL || '',
   apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2023-05-15',
   maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS) || 800,
+  
+  // Azure AI Agent service settings
+  useAiAgentService: process.env.USE_AI_AGENT_SERVICE === 'true',
+  aiAgentEndpoint: process.env.AI_AGENT_ENDPOINT || '',
+  aiAgentProjectName: process.env.AI_AGENT_PROJECT_NAME || '',
+  aiAgentName: process.env.AI_AGENT_NAME || '',
+  aiAgentInstructions: process.env.AI_AGENT_INSTRUCTIONS || '',
+  aiAgentModel: process.env.AI_AGENT_MODEL || 'gpt-4o-mini'
 });
 
 module.exports = {

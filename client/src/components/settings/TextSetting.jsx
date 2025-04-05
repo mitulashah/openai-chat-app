@@ -1,5 +1,5 @@
 import { Input, Label, Text } from '@fluentui/react-components';
-import { useSettingsStyles } from './SettingsStyles';
+import { useSettingsStyles } from '../../styles/components/settings/settingsStyles';
 
 /**
  * A reusable component for text input settings

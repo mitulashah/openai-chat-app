@@ -34,7 +34,6 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     ...shorthands.gap('16px'),
   },
-  // New styles for tab layout and wider dialog
   wideSurface: {
     width: '700px',
     maxWidth: '90vw',
@@ -64,6 +63,9 @@ const useStyles = makeStyles({
     padding: '12px',
     borderRadius: '6px',
     marginBottom: '12px',
+  },
+  inactiveService: {
+    opacity: 0.7,
   }
 });
 
@@ -142,9 +144,25 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
         <DialogBody>
           <DialogContent>
             <div className={styles.form}>
+              <div className={styles.settingContainer}>
+                <Label className={styles.settingLabel}>Service Type</Label>
+                <Text className={styles.settingDescription}>
+                  Select which Azure AI service to use for chat interactions
+                </Text>
+                <RadioGroup 
+                  className={styles.radioGroup}
+                  value={config.useAiAgentService ? "agent" : "openai"}
+                  onChange={(e, data) => setConfigValue('useAiAgentService', data.value === "agent")}
+                >
+                  <Radio value="openai" label="Azure OpenAI" />
+                  <Radio value="agent" label="Azure AI Agent Service" />
+                </RadioGroup>
+              </div>
+
               <div className={styles.tabContainer}>
                 <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
                   <Tab id="azure-openai-tab" value="azure-openai">Azure OpenAI</Tab>
+                  <Tab id="ai-agent-tab" value="ai-agent">AI Agent Service</Tab>
                   <Tab id="model-params-tab" value="model-params">Model Parameters</Tab>
                   <Tab id="memory-tab" value="memory">Conversation Memory</Tab>
                 </TabList>
@@ -154,38 +172,123 @@ export function AdminPanel({ open, onOpenChange, onConfigSaved }) {
                 {/* Azure OpenAI Configuration */}
                 {selectedTab === "azure-openai" && (
                   <div className={styles.tabContent}>
-                    <TextSetting
-                      id="apiKey"
-                      label="API Key"
-                      description="Your Azure OpenAI API key for authentication"
-                      value={config.apiKey}
-                      onChange={handleInputChange('apiKey')}
-                      isPassword={true}
-                    />
+                    <div className={config.useAiAgentService ? styles.inactiveService : ''}>
+                      <TextSetting
+                        id="apiKey"
+                        label="API Key"
+                        description="Your Azure OpenAI API key for authentication"
+                        value={config.apiKey}
+                        onChange={handleInputChange('apiKey')}
+                        isPassword={true}
+                        disabled={config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="endpoint"
+                        label="Endpoint URL"
+                        description="Your Azure OpenAI service endpoint (e.g., https://your-resource.openai.azure.com)"
+                        value={config.endpoint}
+                        onChange={handleInputChange('endpoint')}
+                        disabled={config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="deploymentName"
+                        label="Deployment Name"
+                        description="The name of your model deployment in Azure OpenAI"
+                        value={config.deploymentName}
+                        onChange={handleInputChange('deploymentName')}
+                        disabled={config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="apiVersion"
+                        label="API Version"
+                        description="The Azure OpenAI API version to use (e.g., 2023-05-15)"
+                        value={config.apiVersion}
+                        onChange={handleInputChange('apiVersion')}
+                        disabled={config.useAiAgentService}
+                      />
+                    </div>
                     
-                    <TextSetting
-                      id="endpoint"
-                      label="Endpoint URL"
-                      description="Your Azure OpenAI service endpoint (e.g., https://your-resource.openai.azure.com)"
-                      value={config.endpoint}
-                      onChange={handleInputChange('endpoint')}
-                    />
+                    {config.useAiAgentService && (
+                      <div className={styles.settingContainer}>
+                        <Text>
+                          Azure OpenAI is currently inactive. Activate it by selecting "Azure OpenAI" as the service type.
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Azure AI Agent Configuration */}
+                {selectedTab === "ai-agent" && (
+                  <div className={styles.tabContent}>
+                    <div className={!config.useAiAgentService ? styles.inactiveService : ''}>
+                      <TextSetting
+                        id="agentApiKey"
+                        label="API Key"
+                        description="Your Azure AI Projects API key for authentication"
+                        value={config.apiKey}
+                        onChange={handleInputChange('apiKey')}
+                        isPassword={true}
+                        disabled={!config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="aiAgentEndpoint"
+                        label="AI Agent Endpoint"
+                        description="Your Azure AI Agent service endpoint URL"
+                        value={config.aiAgentEndpoint}
+                        onChange={handleInputChange('aiAgentEndpoint')}
+                        disabled={!config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="aiAgentProjectName"
+                        label="Project Name"
+                        description="The name of your Azure AI Foundry project"
+                        value={config.aiAgentProjectName}
+                        onChange={handleInputChange('aiAgentProjectName')}
+                        disabled={!config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="aiAgentName"
+                        label="Agent Name"
+                        description="The name of your AI agent in Azure AI Foundry"
+                        value={config.aiAgentName}
+                        onChange={handleInputChange('aiAgentName')}
+                        disabled={!config.useAiAgentService}
+                      />
+                      
+                      <TextSetting
+                        id="aiAgentModel"
+                        label="Model Name"
+                        description="The AI model to use (e.g., gpt-4o-mini, llama-3.1, etc.)"
+                        value={config.aiAgentModel}
+                        onChange={handleInputChange('aiAgentModel')}
+                        disabled={!config.useAiAgentService}
+                      />
+                      
+                      <TextAreaSetting
+                        id="aiAgentInstructions"
+                        label="Agent Instructions"
+                        description="Instructions that define the agent's behavior"
+                        value={config.aiAgentInstructions}
+                        onChange={handleInputChange('aiAgentInstructions')}
+                        rows={3}
+                        disabled={!config.useAiAgentService}
+                      />
+                    </div>
                     
-                    <TextSetting
-                      id="deploymentName"
-                      label="Deployment Name"
-                      description="The name of your model deployment in Azure OpenAI"
-                      value={config.deploymentName}
-                      onChange={handleInputChange('deploymentName')}
-                    />
-                    
-                    <TextSetting
-                      id="apiVersion"
-                      label="API Version"
-                      description="The Azure OpenAI API version to use (e.g., 2023-05-15)"
-                      value={config.apiVersion}
-                      onChange={handleInputChange('apiVersion')}
-                    />
+                    {!config.useAiAgentService && (
+                      <div className={styles.settingContainer}>
+                        <Text>
+                          Azure AI Agent Service is currently inactive. Activate it by selecting "Azure AI Agent Service" as the service type.
+                        </Text>
+                      </div>
+                    )}
                   </div>
                 )}
                 

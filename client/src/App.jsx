@@ -118,7 +118,8 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
     configLoading,
     refreshConfiguration,
     memorySettings,
-    autoInitialized
+    autoInitialized,
+    useAiAgentService
   } = useConfiguration();
   
   // Get UI-related state from UIStateContext
@@ -198,6 +199,7 @@ const ChatContent = ({ currentTheme, currentThemeName, handleThemeChange }) => {
       
       <Footer 
         isConfigured={isConfigured}
+        useAiAgentService={useAiAgentService}
         currentTheme={currentTheme}
         currentThemeName={currentThemeName}
         handleThemeChange={handleThemeChange}

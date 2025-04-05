@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Text,
-  makeStyles,
-  shorthands,
-  tokens,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -18,101 +15,8 @@ import {
 import { DeleteRegular, DataUsageRegular, ColorRegular } from '@fluentui/react-icons';
 import { themes } from '../../theme';
 import { formatNumber, getMemoryModeDisplay } from '../../utils/Utils';
-
-const useStyles = makeStyles({
-  footer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 20px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  footerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('20px'),
-  },
-  footerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('20px'),
-  },
-  themeSelector: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    position: 'relative',
-  },
-  themePreview: {
-    width: '16px',
-    height: '16px',
-    borderRadius: '4px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    marginRight: '8px',
-  },
-  menuItemContent: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  statusText: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-  },
-  statusDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-  },
-  statusDotConfigured: {
-    backgroundColor: tokens.colorPaletteGreenForeground1,
-  },
-  statusDotUnconfigured: {
-    backgroundColor: tokens.colorPaletteRedForeground1,
-  },
-  divider: {
-    height: '24px',
-  },
-  tokenUsageContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('6px'),
-    cursor: 'pointer',
-  },
-  tokenBadge: {
-    backgroundColor: tokens.colorBrandBackground,
-    color: tokens.colorNeutralForegroundOnBrand,
-  },
-  memoryModeText: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-  },
-  tokenTooltipContent: {
-    padding: '8px',
-    maxWidth: '240px',
-  },
-  tokenStatsRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    ...shorthands.gap('12px'),
-    marginBottom: '4px',
-  },
-  tokenStatsLabel: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground2,
-  },
-  tokenStatsValue: {
-    fontSize: '12px',
-    fontWeight: '600',
-  },
-  tooltipDivider: {
-    margin: '6px 0',
-  },
-  menuButton: {
-    position: 'relative',
-  }
-});
+import { useLayoutStyles } from '../../styles/components/chat/layoutStyles';
+import { useThemeStyles } from '../../styles/theme/themeStyles';
 
 /**
  * Footer component displays application status and controls
@@ -122,6 +26,7 @@ const useStyles = makeStyles({
  * 
  * @param {Object} props - Component props
  * @param {boolean} props.isConfigured - Whether Azure OpenAI is configured
+ * @param {boolean} props.useAiAgentService - Whether Azure AI Agent Service is being used
  * @param {Object} props.currentTheme - Current theme object
  * @param {string} props.currentThemeName - Current theme name
  * @param {Function} props.handleThemeChange - Function to change theme
@@ -131,13 +36,15 @@ const useStyles = makeStyles({
  */
 export const Footer = ({ 
   isConfigured, 
+  useAiAgentService,
   currentTheme, 
   currentThemeName, 
   handleThemeChange,
   memorySettings,
   tokenUsage
 }) => {
-  const styles = useStyles();
+  const styles = useLayoutStyles();
+  const themeStyles = useThemeStyles();
   
   // Get background colors for both themes
   const lightBackground = themes?.light?.colorNeutralBackground1 || '#F8F8F2';
@@ -162,13 +69,19 @@ export const Footer = ({
     current: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } 
   };
 
+  // Get service type display text
+  const getServiceTypeDisplay = () => {
+    if (!isConfigured) return 'Not Configured';
+    return useAiAgentService ? 'Configured: Agent Service' : 'Configured: OpenAI';
+  };
+
   return (
     <div className={styles.footer}>
       <div className={styles.footerLeft}>
         <div className={styles.statusText}>
           <div className={`${styles.statusDot} ${isConfigured ? styles.statusDotConfigured : styles.statusDotUnconfigured}`} />
           <Text size={200}>
-            {isConfigured ? 'Configured' : 'Not Configured'}
+            {getServiceTypeDisplay()}
           </Text>
         </div>
         
@@ -248,7 +161,7 @@ export const Footer = ({
                   >
                     <div className={styles.menuItemContent}>
                       <div 
-                        className={styles.themePreview}
+                        className={themeStyles.themeSwatch}
                         style={{ backgroundColor: lightBackground }}
                       />
                       Light Dracula
@@ -259,7 +172,7 @@ export const Footer = ({
                   >
                     <div className={styles.menuItemContent}>
                       <div 
-                        className={styles.themePreview}
+                        className={themeStyles.themeSwatch}
                         style={{ backgroundColor: darkBackground }}
                       />
                       Dark Dracula
@@ -270,7 +183,7 @@ export const Footer = ({
                   >
                     <div className={styles.menuItemContent}>
                       <div 
-                        className={styles.themePreview}
+                        className={themeStyles.themeSwatch}
                         style={{ backgroundColor: lightNordBackground }}
                       />
                       Light Nord
@@ -281,7 +194,7 @@ export const Footer = ({
                   >
                     <div className={styles.menuItemContent}>
                       <div 
-                        className={styles.themePreview}
+                        className={themeStyles.themeSwatch}
                         style={{ backgroundColor: darkNordBackground }}
                       />
                       Dark Nord

@@ -13,6 +13,7 @@ export const ConfigurationProvider = ({ children }) => {
   const [isConfigured, setIsConfigured] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
   const [autoInitialized, setAutoInitialized] = useState(false);
+  const [useAiAgentService, setUseAiAgentService] = useState(false);
 
   // Load configuration on mount
   useEffect(() => {
@@ -31,7 +32,16 @@ export const ConfigurationProvider = ({ children }) => {
           includeSystemMessage: localConfig.includeSystemMessage || false,
           systemMessage: localConfig.systemMessage || 'You are a helpful assistant.'
         });
-        if (localConfig.apiKey && localConfig.endpoint && localConfig.deploymentName) {
+
+        // Check if using AI Agent Service
+        if (localConfig.useAiAgentService) {
+          setUseAiAgentService(true);
+        }
+
+        if ((localConfig.useAiAgentService && localConfig.apiKey && localConfig.aiAgentEndpoint && 
+           localConfig.aiAgentProjectName && localConfig.aiAgentName) || 
+           (!localConfig.useAiAgentService && localConfig.apiKey && localConfig.endpoint && localConfig.deploymentName)) {
+          
           console.log('Found valid configuration, automatically initializing connection');
           
           // Update the server configuration with the local one to ensure they are in sync
@@ -59,6 +69,12 @@ export const ConfigurationProvider = ({ children }) => {
               includeSystemMessage: serverConfig.includeSystemMessage || false,
               systemMessage: serverConfig.systemMessage || 'You are a helpful assistant.'
             });
+            
+            // Check if using AI Agent Service from server config
+            if (serverConfig.useAiAgentService) {
+              setUseAiAgentService(serverConfig.useAiAgentService);
+            }
+            
             refreshConfiguration();
           }
         } catch (serverConfigError) {
@@ -75,6 +91,17 @@ export const ConfigurationProvider = ({ children }) => {
       setConfigLoading(true);
       const configured = await checkConfiguration();
       setIsConfigured(configured);
+      
+      // Update useAiAgentService when refreshing config
+      try {
+        const serverConfig = await getServerConfig();
+        if (serverConfig && serverConfig.useAiAgentService !== undefined) {
+          setUseAiAgentService(serverConfig.useAiAgentService);
+        }
+      } catch (error) {
+        console.error('Error getting server config:', error);
+      }
+      
     } catch (error) {
       console.error('Error checking configuration:', error);
       setIsConfigured(false);
@@ -89,7 +116,8 @@ export const ConfigurationProvider = ({ children }) => {
     refreshConfiguration,
     memorySettings: memoryState.memorySettings,
     updateMemorySettings: memoryState.updateMemorySettings,
-    autoInitialized
+    autoInitialized,
+    useAiAgentService
   };
 
   return (
