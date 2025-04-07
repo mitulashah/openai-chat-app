@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - node_modules:/workspace/node_modules
+      - client_node_modules:/workspace/client/node_modules
+      - npm_cache:/home/node/.npm-cache
+    command: sleep infinity
+    ports:
+      - "3000:3000"  # Express server
+      - "5173:5173"  # Vite dev server
+    environment:
+      - NODE_ENV=development
+      # You can uncomment and add more environment variables here
+    # Uncomment to use a local .env file
+    # env_file:
+    #   - ../.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+# Named volumes for performance and persistence
+volumes:
+  node_modules:
+  client_node_modules:
+  npm_cache:
+  redis_data:
